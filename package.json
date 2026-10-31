@@ -1,0 +1,65 @@
+{
+  "name": "apkrtool-ide",
+  "version": "0.2.0",
+  "description": "ApkRtool IDE - Modern Android APK Decompiler, Smali Bytecode Editor & Rebuilder",
+  "main": "electron/main.js",
+  "scripts": {
+    "frontend:build": "npm --prefix frontend run build",
+    "icons:build": "electron scripts/build-icons.js",
+    "start": "npm run frontend:build && electron .",
+    "dev": "npm run frontend:build && electron .",
+    "build": "npm run frontend:build && electron-builder",
+    "build:dir": "npm run frontend:build && electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.apkrtool.ide",
+    "productName": "ApkRtool IDE",
+    "copyright": "Copyright © 2026 ApkRtool",
+    "directories": {
+      "output": "release"
+    },
+    "compression": "store",
+    "icon": "build/icon.ico",
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "package.json",
+      "node_modules/node-pty/**/*"
+    ],
+    "asarUnpack": [
+      "**/node-pty/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "tools",
+        "to": "tools"
+      },
+      {
+        "from": "signing",
+        "to": "signing"
+      }
+    ],
+    "afterPack": "./scripts/after-pack.js",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
+  },
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "rcedit": "^5.0.2"
+  }
+}

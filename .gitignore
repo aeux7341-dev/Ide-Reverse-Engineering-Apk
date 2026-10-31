@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production releases and installer builds
+release/
+dist/
+*/dist/
+
+# Bundled platform SDKs and portable JREs (>100MB exceeds GitHub push limits)
+tools/android-sdk/
+tools/jadx/
+tools/jdk/
+
+# Logs and system files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
