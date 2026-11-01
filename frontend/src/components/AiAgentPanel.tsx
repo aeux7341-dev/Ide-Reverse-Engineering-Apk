@@ -167,7 +167,7 @@ export default function AiAgentPanel({
 
   // Provider and model options
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'anthropic'>('gemini');
-  const [model, setModel] = useState('gemini-2.5-flash');
+  const [model, setModel] = useState('gemini-3.6-flash');
 
   // Key stats
   const [keyStats, setKeyStats] = useState<{ totalKeys: number; activeKeyMasked: string } | null>(null);
@@ -454,7 +454,7 @@ export default function AiAgentPanel({
             onChange={(e) => {
               const p = e.target.value as any;
               setProvider(p);
-              if (p === 'gemini') setModel('gemini-2.5-flash');
+              if (p === 'gemini') setModel('gemini-3.6-flash');
               else if (p === 'anthropic') setModel('claude-3-5-sonnet-20241022');
               else setModel('gpt-4o-mini');
             }}

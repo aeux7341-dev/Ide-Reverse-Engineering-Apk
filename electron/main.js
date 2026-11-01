@@ -891,7 +891,7 @@ ipcMain.handle('ai-agent-run', async (event, params) => {
     activeFile: params.activeFile,
     fileContent: params.fileContent,
     provider: params.provider || 'gemini',
-    model: params.model || 'gemini-2.5-flash',
+    model: params.model || 'gemini-3.6-flash',
     options: params.options || {},
     onStep: (step) => {
       if (!sender.isDestroyed()) {
@@ -920,7 +920,7 @@ ipcMain.handle('ai-bulk-batch', async (event, params) => {
     items: params.items || [],
     taskPrompt: params.taskPrompt,
     provider: params.provider || 'gemini',
-    model: params.model || 'gemini-2.5-flash',
+    model: params.model || 'gemini-3.6-flash',
     concurrency: params.concurrency || 2,
     onProgress: (prog) => {
       if (!sender.isDestroyed()) {

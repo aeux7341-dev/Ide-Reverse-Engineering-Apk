@@ -171,7 +171,7 @@ export default function SettingsModal({
               {t('settings.title', 'Settings — ApkRtool IDE')}
             </span>
             <span className="text-[10px] px-1.5 py-0.2 bg-[#282828] text-[#858585] rounded font-mono">
-              v0.3.1
+              v0.3.2
             </span>
           </div>
 
@@ -552,7 +552,7 @@ export default function SettingsModal({
                 <div className="bg-[#181818] border border-[#2B2B2B] rounded-[6px] p-4 flex flex-col gap-3 text-xs">
                   <div className="flex items-center justify-between py-1 border-b border-[#252526]">
                     <span className="text-[#858585]">Version</span>
-                    <span className="font-mono text-white font-medium">0.3.1 (Production Release)</span>
+                    <span className="font-mono text-white font-medium">0.3.2 (Production Release)</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-[#252526]">
                     <span className="text-[#858585]">Electron Runtime</span>

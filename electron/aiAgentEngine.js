@@ -609,7 +609,7 @@ class AiAgentEngine {
         if (provider === 'gemini') {
           result = await this.callGeminiApi({
             apiKey,
-            model: model || 'gemini-2.5-flash',
+            model: model || 'gemini-3.6-flash',
             messages,
             tools,
             temperature: options.temperature,
@@ -674,25 +674,29 @@ class AiAgentEngine {
       } else if (msg.role === 'user') {
         contents.push({ role: 'user', parts: [{ text: msg.content }] });
       } else if (msg.role === 'assistant') {
-        const parts = [];
-        if (msg.content) parts.push({ text: msg.content });
-        if (msg.tool_calls) {
-          for (const tc of msg.tool_calls) {
-            let parsedArgs = {};
-            try {
-              parsedArgs = typeof tc.function.arguments === 'string'
-                ? JSON.parse(tc.function.arguments)
-                : tc.function.arguments;
-            } catch {}
-            parts.push({
-              functionCall: {
-                name: tc.function.name,
-                args: parsedArgs,
-              },
-            });
+        if (msg.rawParts && Array.isArray(msg.rawParts) && msg.rawParts.length > 0) {
+          contents.push({ role: 'model', parts: msg.rawParts });
+        } else {
+          const parts = [];
+          if (msg.content) parts.push({ text: msg.content });
+          if (msg.tool_calls) {
+            for (const tc of msg.tool_calls) {
+              let parsedArgs = {};
+              try {
+                parsedArgs = typeof tc.function.arguments === 'string'
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function.arguments;
+              } catch {}
+              parts.push({
+                functionCall: {
+                  name: tc.function.name,
+                  args: parsedArgs,
+                },
+              });
+            }
           }
+          contents.push({ role: 'model', parts });
         }
-        contents.push({ role: 'model', parts });
       } else if (msg.role === 'tool') {
         const fnPart = {
           functionResponse: {
@@ -768,6 +772,7 @@ class AiAgentEngine {
     return {
       text: textOutput,
       toolCalls: toolCalls.length ? toolCalls : null,
+      rawParts: parts,
       raw: data,
     };
   }
@@ -880,7 +885,7 @@ class AiAgentEngine {
     activeFile,
     fileContent,
     provider = 'gemini',
-    model = 'gemini-2.5-flash',
+    model = 'gemini-3.6-flash',
     options = {},
     onStep, // callback({ type, data })
     onFileModified,
@@ -972,6 +977,7 @@ INSTRUCTIONS:
         role: 'assistant',
         content: text || '',
         tool_calls: toolCalls,
+        rawParts: modelResponse.rawParts,
       });
 
       // Execute each tool call
@@ -1035,7 +1041,7 @@ INSTRUCTIONS:
   /**
    * Bulk API batch runner across multiple files or tasks
    */
-  async runBulkBatch({ items = [], taskPrompt, provider = 'gemini', model = 'gemini-2.5-flash', concurrency = 2, onProgress }) {
+  async runBulkBatch({ items = [], taskPrompt, provider = 'gemini', model = 'gemini-3.6-flash', concurrency = 2, onProgress }) {
     const results = [];
     let completed = 0;
 

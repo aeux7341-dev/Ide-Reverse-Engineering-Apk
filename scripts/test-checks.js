@@ -2,14 +2,14 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 
-console.log('Running ApkRtool IDE v0.3.1 Self-Checks...');
+console.log('Running ApkRtool IDE v0.3.2 Self-Checks...');
 
 // 0. Version checks
 const pkg = require('../package.json');
 const frontPkg = require('../frontend/package.json');
-assert.strictEqual(pkg.version, '0.3.1', 'Root version must be 0.3.1');
-assert.strictEqual(frontPkg.version, '0.3.1', 'Frontend version must be 0.3.1');
-console.log('✓ Project version 0.3.1 verified across all packages');
+assert.strictEqual(pkg.version, '0.3.2', 'Root version must be 0.3.2');
+assert.strictEqual(frontPkg.version, '0.3.2', 'Frontend version must be 0.3.2');
+console.log('✓ Project version 0.3.2 verified across all packages');
 
 // 0.1 i18n checks
 const i18nFile = path.resolve(__dirname, '..', 'frontend', 'src', 'utils', 'i18n.tsx');

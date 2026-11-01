@@ -1378,7 +1378,7 @@ export default function App() {
           activeFile: active?.path ?? null,
           fileContent: active ? fileContents : null,
           provider: 'gemini',
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.6-flash',
           apiKeys: geminiApiKey,
         });
 

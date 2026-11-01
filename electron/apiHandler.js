@@ -775,7 +775,7 @@ async function handleApiRequest(request) {
           fileContent,
           workspacePath,
           provider: provider || 'gemini',
-          model: model || 'gemini-2.5-flash',
+          model: model || 'gemini-3.6-flash',
         });
         return new Response(JSON.stringify(result), {
           status: 200,
@@ -803,7 +803,7 @@ Give a concise, professional analysis. Highlight any hardcoded secrets, crypto w
       try {
         const res = await engine.callModelWithFailover({
           provider: provider || 'gemini',
-          model: model || 'gemini-2.5-flash',
+          model: model || 'gemini-3.6-flash',
           messages: [{ role: 'user', content: fullPrompt }],
         });
         return new Response(JSON.stringify({ response: res.text, keyStats: engine.getKeyStats() }), {

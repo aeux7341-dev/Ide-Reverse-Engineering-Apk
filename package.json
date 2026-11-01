@@ -1,6 +1,6 @@
 {
   "name": "apkrtool-ide",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "ApkRtool IDE - Modern Android APK Decompiler, Smali Bytecode Editor & Rebuilder",
   "main": "electron/main.js",
   "scripts": {
