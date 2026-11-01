@@ -58,6 +58,30 @@ export default function SettingsModal({
   const { lang, setLang, t } = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTab>('language');
   const [isMaximized, setIsMaximized] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateCheckStatus, setUpdateCheckStatus] = useState<string | null>(null);
+
+  const handleCheckUpdate = async () => {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI?.updaterCheck) {
+      setUpdateCheckStatus('Updater only active in desktop Electron runtime.');
+      return;
+    }
+    setCheckingUpdate(true);
+    setUpdateCheckStatus('Checking GitHub Releases...');
+    try {
+      const res = await electronAPI.updaterCheck();
+      if (res?.error) {
+        setUpdateCheckStatus(res.error);
+      } else {
+        setUpdateCheckStatus('Release check completed.');
+      }
+    } catch (err: any) {
+      setUpdateCheckStatus(err?.message || 'Check failed.');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   // Draggable Window State
   const windowWidth = 840;
@@ -546,6 +570,25 @@ export default function SettingsModal({
                     <span className="text-[#858585]">Platform</span>
                     <span className="font-mono text-white">Windows x64 (Self-Contained)</span>
                   </div>
+                </div>
+
+                {/* Auto-Update Check Panel */}
+                <div className="flex items-center justify-between p-3.5 bg-[#181818] border border-[#2B2B2B] rounded-[6px]">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-white">GitHub Releases Auto-Update</span>
+                    <span className="text-[11px] text-[#858585]">
+                      {updateCheckStatus || 'Automatically detects, downloads, and applies delta updates from GitHub.'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCheckUpdate}
+                    disabled={checkingUpdate}
+                    className="px-3 py-1.5 bg-[#252526] hover:bg-[#2A2D2E] text-white rounded-[4px] text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    <RotateCw size={12} className={checkingUpdate ? 'animate-spin text-[#0078D4]' : 'text-[#858585]'} />
+                    <span>{checkingUpdate ? 'Checking...' : t('updater.check', 'Check for Updates')}</span>
+                  </button>
                 </div>
               </div>
             )}

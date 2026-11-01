@@ -255,9 +255,20 @@ function createMainWindow() {
 
   mainWindow.loadURL('app://bundle/index.html');
 
+  setupAutoUpdater(mainWindow);
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
+
+    // Perform background update check 5 seconds after startup
+    setTimeout(() => {
+      if (autoUpdater && app.isPackaged) {
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.warn('[AutoUpdater] Startup check ignored:', err?.message);
+        });
+      }
+    }, 5000);
   });
 
   mainWindow.on('enter-full-screen', () => {
@@ -977,6 +988,104 @@ ipcMain.handle('mcp-stop-server', (_event, name) => {
 ipcMain.handle('mcp-call-tool', async (_event, { server, tool, args }) => {
   const manager = getMcpManager();
   return await manager.callTool(server, tool, args);
+});
+
+// ── Auto-Updater (GitHub Releases) ────────────────────────────────────────────
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require('electron-updater'));
+  if (autoUpdater) {
+    autoUpdater.logger = console;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+  }
+} catch (e) {
+  console.warn('[AutoUpdater] Failed to load electron-updater:', e.message);
+}
+
+function setupAutoUpdater(win) {
+  if (!autoUpdater || !win) return;
+
+  autoUpdater.removeAllListeners();
+
+  autoUpdater.on('checking-for-update', () => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', { status: 'checking' });
+    }
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', {
+        status: 'available',
+        version: info?.version,
+        releaseDate: info?.releaseDate,
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', {
+        status: 'not-available',
+        version: info?.version,
+      });
+    }
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', {
+        status: 'downloading',
+        percent: Math.round(progress?.percent || 0),
+        bytesPerSecond: progress?.bytesPerSecond,
+        transferred: progress?.transferred,
+        total: progress?.total,
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', {
+        status: 'downloaded',
+        version: info?.version,
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater-status', {
+        status: 'error',
+        error: err?.message || 'Update check failed',
+      });
+    }
+  });
+}
+
+ipcMain.handle('updater-check', async () => {
+  if (!autoUpdater) return { error: 'AutoUpdater not initialized' };
+  try {
+    return await autoUpdater.checkForUpdates();
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('updater-download', async () => {
+  if (!autoUpdater) return { error: 'AutoUpdater not initialized' };
+  try {
+    return await autoUpdater.downloadUpdate();
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('updater-restart', () => {
+  if (!autoUpdater) return false;
+  autoUpdater.quitAndInstall(false, true);
+  return true;
 });
 
 // ── App Lifecycle ─────────────────────────────────────────────────────────────

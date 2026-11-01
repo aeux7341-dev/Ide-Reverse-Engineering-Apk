@@ -51,10 +51,16 @@
       "allowElevation": false,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "aeux7341-dev",
+      "repo": "Ide-Reverse-Engineering-Apk"
     }
   },
   "dependencies": {
     "archiver": "^6.0.2",
+    "electron-updater": "^6.8.11",
     "node-pty": "^1.1.0"
   },
   "devDependencies": {

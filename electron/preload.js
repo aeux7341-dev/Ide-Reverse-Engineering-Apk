@@ -103,6 +103,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('workspace-changed', listener);
     return () => ipcRenderer.removeListener('workspace-changed', listener);
   },
+  // Auto-Updater (GitHub Releases)
+  updaterCheck: () => ipcRenderer.invoke('updater-check'),
+  updaterDownload: () => ipcRenderer.invoke('updater-download'),
+  updaterRestart: () => ipcRenderer.invoke('updater-restart'),
+  onUpdaterStatus: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('updater-status', listener);
+    return () => ipcRenderer.removeListener('updater-status', listener);
+  },
   getPathForFile: (file) => {
     try {
       if (webUtils && typeof webUtils.getPathForFile === 'function') {

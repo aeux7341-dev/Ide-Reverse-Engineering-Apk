@@ -73,4 +73,15 @@ assert(BUILT_IN_SKILLS.some((s) => s.id === 'smali-master'), 'Skill smali-master
 assert(BUILT_IN_SKILLS.some((s) => s.id === 'security-guard'), 'Skill security-guard must exist in built-ins');
 console.log('✓ Skill catalog built-ins verified');
 
+// 7. Auto-Updater & GitHub Releases Verification
+assert(pkg.dependencies['electron-updater'], 'electron-updater must be in dependencies');
+assert(pkg.build?.publish?.provider === 'github', 'publish provider must be github');
+assert(pkg.build?.publish?.owner === 'aeux7341-dev', 'publish owner must be aeux7341-dev');
+assert(pkg.build?.publish?.repo === 'Ide-Reverse-Engineering-Apk', 'publish repo must be Ide-Reverse-Engineering-Apk');
+const preloadContent = fs.readFileSync(path.resolve(__dirname, '..', 'electron', 'preload.js'), 'utf8');
+assert(preloadContent.includes('updaterCheck'), 'preload.js must expose updaterCheck');
+assert(preloadContent.includes('updaterRestart'), 'preload.js must expose updaterRestart');
+assert(preloadContent.includes('onUpdaterStatus'), 'preload.js must expose onUpdaterStatus');
+console.log('✓ Auto-Updater GitHub Releases integration verified');
+
 console.log('ALL CHECKS PASSED SUCCESSFULLY.');

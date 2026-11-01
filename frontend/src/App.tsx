@@ -27,7 +27,8 @@ import {
   clearRecentWorkspaces,
 } from './utils/workspaceStorage';
 import { createNativeDirectoryHandle } from './utils/nativeFsAdapter';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ArrowUpCircle, Download, CheckCircle2, X } from 'lucide-react';
+import { useI18n } from './utils/i18n';
 
 interface Tab {
   name: string;
@@ -258,6 +259,37 @@ export default function App() {
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
   const [isMcpModalOpen, setIsMcpModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Auto-Updater State (GitHub Releases)
+  const { t } = useI18n();
+  const [updateInfo, setUpdateInfo] = useState<{
+    status: 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';
+    version?: string;
+    percent?: number;
+    error?: string;
+  } | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
+  useEffect(() => {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI?.onUpdaterStatus) return;
+
+    const unsub = electronAPI.onUpdaterStatus((data: any) => {
+      setUpdateInfo(data);
+      if (data?.status === 'available' || data?.status === 'downloading' || data?.status === 'downloaded') {
+        setShowUpdateBanner(true);
+      }
+    });
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
+  const handleUpdateAndRestart = () => {
+    const electronAPI = (window as any).electronAPI;
+    electronAPI?.updaterRestart?.();
+  };
 
   // Bottom Dock Panel (Terminal, APK Runner, Output, Problems)
   const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false);
@@ -2014,6 +2046,81 @@ export default function App() {
         onOpenSkillsModal={() => setIsSkillsModalOpen(true)}
         onOpenMcpModal={() => setIsMcpModalOpen(true)}
       />
+
+      {/* Auto-Update Floating Notification Toast */}
+      {showUpdateBanner && updateInfo && (
+        <div className="fixed bottom-9 right-4 z-50 max-w-sm w-84 bg-[#181818] border border-[#2B2B2B] rounded-[6px] shadow-2xl p-3 flex flex-col gap-2.5 text-xs text-[#CCCCCC] select-none">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium text-white">
+              {updateInfo.status === 'downloaded' ? (
+                <CheckCircle2 size={16} className="text-[#10B981] shrink-0" />
+              ) : updateInfo.status === 'downloading' ? (
+                <Download size={16} className="text-[#0078D4] shrink-0 animate-bounce" />
+              ) : (
+                <ArrowUpCircle size={16} className="text-[#0078D4] shrink-0" />
+              )}
+              <span className="truncate">
+                {updateInfo.status === 'downloaded'
+                  ? t('updater.ready', 'Update ready to install!')
+                  : updateInfo.status === 'downloading'
+                  ? `Downloading v${updateInfo.version || ''}...`
+                  : t('updater.available', 'New update found')}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowUpdateBanner(false)}
+              className="text-[#696969] hover:text-white p-0.5 rounded transition-colors"
+              title="Dismiss"
+            >
+              <X size={13} />
+            </button>
+          </div>
+
+          <div className="text-[11px] text-[#858585] leading-relaxed">
+            {updateInfo.status === 'downloaded'
+              ? `Release v${updateInfo.version || ''} is downloaded and verified. Restart to apply immediately.`
+              : updateInfo.status === 'downloading'
+              ? `Downloading package: ${updateInfo.percent || 0}% completed.`
+              : `A new version (v${updateInfo.version || ''}) is available on GitHub Releases.`}
+          </div>
+
+          {updateInfo.status === 'downloading' && (
+            <div className="w-full bg-[#252526] h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-[#0078D4] h-full transition-all duration-150"
+                style={{ width: `${Math.max(5, updateInfo.percent || 0)}%` }}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#252526]">
+            {updateInfo.status === 'downloaded' ? (
+              <>
+                <button
+                  onClick={() => setShowUpdateBanner(false)}
+                  className="px-2.5 py-1 text-[11px] text-[#858585] hover:text-white transition-colors"
+                >
+                  {t('updater.later', 'Later')}
+                </button>
+                <button
+                  onClick={handleUpdateAndRestart}
+                  className="px-3 py-1 bg-[#0078D4] hover:bg-[#1084d8] text-white rounded-[3px] text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={11} className="animate-spin" />
+                  <span>{t('updater.restart', 'Update & Restart')}</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowUpdateBanner(false)}
+                className="px-2.5 py-1 text-[11px] text-[#858585] hover:text-white transition-colors"
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

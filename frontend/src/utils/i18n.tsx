@@ -124,6 +124,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     'bottom.debug': 'Debug',
     'bottom.terminal': 'Terminal',
     'bottom.apkRunner': 'APK Tester',
+
+    // Auto-Updater
+    'updater.checking': 'Checking for updates...',
+    'updater.available': 'New release found. Downloading...',
+    'updater.ready': 'Update ready to install!',
+    'updater.restart': 'Update & Restart',
+    'updater.later': 'Later',
+    'updater.upToDate': 'ApkRtool IDE is up to date.',
+    'updater.check': 'Check for Updates',
   },
   id: {
     'nav.file': 'Berkas',
@@ -203,6 +212,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     'bottom.debug': 'Debug',
     'bottom.terminal': 'Terminal',
     'bottom.apkRunner': 'Penguji APK',
+
+    // Auto-Updater
+    'updater.checking': 'Memeriksa pembaruan...',
+    'updater.available': 'Rilis baru ditemukan. Mengunduh...',
+    'updater.ready': 'Pembaruan siap dipasang!',
+    'updater.restart': 'Perbarui & Mulai Ulang',
+    'updater.later': 'Nanti',
+    'updater.upToDate': 'ApkRtool IDE sudah versi terbaru.',
+    'updater.check': 'Periksa Pembaruan',
   },
   zh: {
     'nav.file': '文件',
