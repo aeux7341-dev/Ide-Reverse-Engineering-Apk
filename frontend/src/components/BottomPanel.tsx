@@ -17,6 +17,7 @@ import TerminalPanel, {
   TerminalPanelRef,
 } from './TerminalPanel';
 import ApkTesterRunner from './ApkTesterRunner';
+import { useI18n } from '../utils/i18n';
 
 export type BottomTabType =
   | 'problems'
@@ -46,6 +47,7 @@ export default function BottomPanel({
   buildLog = [],
   onStatusMessage,
 }: BottomPanelProps) {
+  const { t } = useI18n();
   const [panelHeight, setPanelHeight] = useState<number>(280);
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
@@ -142,7 +144,7 @@ export default function BottomPanel({
                 : 'text-[#858585] hover:text-[#CCCCCC]'
             }`}
           >
-            <span>Problems</span>
+            <span>{t('bottom.problems', 'Problems')}</span>
             <span className="text-[10px] px-1 py-0.2 rounded-full bg-[#252526] text-[#858585]">
               0
             </span>
@@ -160,7 +162,7 @@ export default function BottomPanel({
                 : 'text-[#858585] hover:text-[#CCCCCC]'
             }`}
           >
-            <span>Output</span>
+            <span>{t('bottom.output', 'Output')}</span>
             {buildLog.length > 0 && (
               <span className="text-[10px] px-1 py-0.2 rounded-full bg-[#252526] text-[#0078D4] font-mono">
                 {buildLog.length}
@@ -180,7 +182,7 @@ export default function BottomPanel({
                 : 'text-[#858585] hover:text-[#CCCCCC]'
             }`}
           >
-            <span>Debug Console</span>
+            <span>{t('bottom.debug', 'Debug Console')}</span>
             {activeTab === 'debug' && (
               <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#0078D4]" />
             )}
@@ -195,7 +197,7 @@ export default function BottomPanel({
                 : 'text-[#858585] hover:text-[#CCCCCC]'
             }`}
           >
-            <span>Terminal</span>
+            <span>{t('bottom.terminal', 'Terminal')}</span>
             {activeTab === 'terminal' && (
               <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#0078D4]" />
             )}
@@ -210,8 +212,7 @@ export default function BottomPanel({
                 : 'text-[#858585] hover:text-[#CCCCCC]'
             }`}
           >
-            <span className="text-[#0078D4]">●</span>
-            <span>APK Runner</span>
+            <span>{t('bottom.apkRunner', 'APK Tester')}</span>
             {activeTab === 'apk-runner' && (
               <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#0078D4]" />
             )}

@@ -8,6 +8,7 @@ import {
   Smartphone, Maximize, Minimize, Minus, Square
 } from 'lucide-react';
 import { getRecentWorkspaces } from '../utils/workspaceStorage';
+import { useI18n } from '../utils/i18n';
 
 interface NavbarProps {
   workspacePath?: string | null;
@@ -96,6 +97,7 @@ export default function Navbar({
   isFullscreen = false,
   dirHandle,
 }: NavbarProps) {
+  const { t, currentLangInfo } = useI18n();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isRecentOpen, setIsRecentOpen] = useState(false);
   const [recentList, setRecentList] = useState<Array<{ name: string; handle: FileSystemDirectoryHandle }>>([]);
@@ -180,7 +182,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('file')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'file' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            File
+            {t('nav.file', 'File')}
           </button>
           {activeMenu === 'file' && (
             <div className="absolute left-0 mt-1 w-64 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -477,7 +479,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('edit')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'edit' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            Edit
+            {t('nav.edit', 'Edit')}
           </button>
           {activeMenu === 'edit' && (
             <div className="absolute left-0 mt-1 w-56 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -510,7 +512,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('view')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'view' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            View
+            {t('nav.view', 'View')}
           </button>
           {activeMenu === 'view' && (
             <div className="absolute left-0 mt-1 w-56 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -589,7 +591,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('decompiler')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'decompiler' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            Decompiler
+            {t('nav.decompiler', 'Decompiler')}
           </button>
           {activeMenu === 'decompiler' && (
             <div className="absolute left-0 mt-1 w-64 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -633,7 +635,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('build')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'build' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            Build
+            {t('nav.build', 'Build')}
           </button>
           {activeMenu === 'build' && (
             <div className="absolute left-0 mt-1 w-64 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -694,7 +696,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('terminal')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'terminal' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            Terminal
+            {t('nav.terminal', 'Terminal')}
           </button>
           {activeMenu === 'terminal' && (
             <div className="absolute left-0 mt-1 w-64 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -729,7 +731,7 @@ export default function Navbar({
             onMouseEnter={() => handleMenuHover('help')}
             className={`px-2 py-1 rounded-[3px] transition-colors duration-100 hover:bg-[#2A2D2E] hover:text-white ${activeMenu === 'help' ? 'bg-[#2A2D2E] text-white' : 'text-[#CCCCCC]'}`}
           >
-            Help
+            {t('nav.help', 'Help')}
           </button>
           {activeMenu === 'help' && (
             <div className="absolute left-0 mt-1 w-56 bg-[#181818] rounded-[4px] shadow-2xl z-50 py-1 text-xs text-[#CCCCCC] context-menu-active">
@@ -777,6 +779,14 @@ export default function Navbar({
               <Play size={11} fill="currentColor" />
             )}
             <span>Build APK</span>
+          </button>
+          <button
+            onClick={onPreferences}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-[3px] bg-[#252526] hover:bg-[#2A2D2E] text-xs text-[#CCCCCC] hover:text-[#FFFFFF] transition-colors cursor-pointer"
+            title="Display Language & Settings"
+          >
+            <span className="text-sm select-none">{currentLangInfo.flag}</span>
+            <span className="text-[11px] font-medium hidden sm:inline">{currentLangInfo.nativeName}</span>
           </button>
           <div className="text-[10px] text-[#696969] font-mono hidden xl:block">
             {workspaceOpened ? 'WORKSPACE' : 'STANDALONE'}

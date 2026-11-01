@@ -1,5 +1,6 @@
 import React from 'react';
 import { Files, Bot, Settings, Wrench, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 type Panel = 'explorer' | 'ai' | 'settings' | 'modifier';
 
@@ -10,6 +11,7 @@ interface ActivityBarProps {
   onToggleSidebar: () => void;
   isAiPanelOpen?: boolean;
   onToggleAiPanel?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export default function ActivityBar({
@@ -19,16 +21,22 @@ export default function ActivityBar({
   onToggleSidebar,
   isAiPanelOpen = false,
   onToggleAiPanel,
+  onOpenSettings,
 }: ActivityBarProps) {
+  const { t } = useI18n();
+
   const iconBtn = (panel: Panel, Icon: React.ElementType, title: string) => {
     const isAi = panel === 'ai';
+    const isSettings = panel === 'settings';
     const active = isAi ? isAiPanelOpen : (activePanel === panel && isSidebarOpen);
 
     return (
       <button
         key={panel}
         onClick={() => {
-          if (isAi) {
+          if (isSettings && onOpenSettings) {
+            onOpenSettings();
+          } else if (isAi) {
             onToggleAiPanel?.();
           } else {
             if (activePanel === panel && isSidebarOpen) {
@@ -58,25 +66,28 @@ export default function ActivityBar({
     <div className="w-12 bg-[#181818] flex flex-col justify-between items-center select-none z-10 shrink-0">
       {/* Top Main Navigation Icons */}
       <div className="flex flex-col w-full items-center">
-        {iconBtn('explorer', Files, 'Explorer')}
-        {iconBtn('ai', Bot, 'AI Assistant / Agent')}
-        {iconBtn('modifier', Wrench, 'APK Modifier')}
+        {iconBtn('explorer', Files, t('panel.explorer', 'Explorer'))}
+        {iconBtn('ai', Bot, t('panel.ai', 'AI Assistant / Agent'))}
+        {iconBtn('modifier', Wrench, t('panel.modifier', 'APK Modifier'))}
       </div>
 
       {/* Bottom Profile, Settings & Collapse Icons */}
       <div className="flex flex-col w-full items-center mb-1">
         <button
           onClick={() => {
-            onSelectPanel('settings');
-            if (!isSidebarOpen) onToggleSidebar();
+            if (onOpenSettings) onOpenSettings();
+            else {
+              onSelectPanel('settings');
+              if (!isSidebarOpen) onToggleSidebar();
+            }
           }}
           className="w-12 h-10 flex items-center justify-center text-[#696969] hover:text-[#CCCCCC] transition-colors duration-100 cursor-pointer"
-          title="Account (Settings)"
+          title={t('panel.account', 'Account & Preferences')}
         >
           <User size={19} strokeWidth={1.5} />
         </button>
 
-        {iconBtn('settings', Settings, 'Settings')}
+        {iconBtn('settings', Settings, t('panel.settings', 'Settings'))}
 
         <button
           onClick={onToggleSidebar}

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { setupMonacoEnvironment } from '../utils/monacoConfig';
 import { getRecentWorkspaces } from '../utils/workspaceStorage';
+import { useI18n } from '../utils/i18n';
 
 interface Tab {
   name: string;
@@ -183,6 +184,7 @@ export default function EditorArea({
   workspaceName,
   onNewTextFile,
 }: EditorAreaProps) {
+  const { t } = useI18n();
   const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevActiveTabPathRef = useRef<string | null>(null);
@@ -948,7 +950,7 @@ export default function EditorArea({
                   className="w-full bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] py-2 px-4 rounded-[4px] font-medium text-xs flex items-center justify-center gap-2 transition-colors duration-100 shadow-sm cursor-pointer"
                 >
                   <Plus size={15} strokeWidth={2.5} />
-                  <span>New File</span>
+                  <span>{t('welcome.newFile', 'New File')}</span>
                   <span className="ml-auto text-[10px] opacity-75 font-mono">Ctrl+N</span>
                 </button>
               )}
@@ -958,7 +960,7 @@ export default function EditorArea({
                 className="w-full bg-[#181818] hover:bg-[#252526] text-[#CCCCCC] hover:text-[#FFFFFF] py-2 px-4 rounded-[4px] font-medium text-xs flex items-center justify-center gap-2 transition-colors duration-100 cursor-pointer"
               >
                 <Play size={13} className="text-[#0078D4]" />
-                <span>Decompile APK</span>
+                <span>{t('welcome.decompile', 'Decompile APK')}</span>
                 <span className="ml-auto text-[10px] text-[#696969] font-mono">Apktool</span>
               </button>
 
@@ -1034,7 +1036,7 @@ export default function EditorArea({
                 className="w-full bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] py-2 px-4 rounded-[4px] font-medium text-xs flex items-center justify-center gap-2 transition-colors duration-100 shadow-sm"
               >
                 <FolderOpen size={16} strokeWidth={2} />
-                <span>Open Folder</span>
+                <span>{t('welcome.openFolder', 'Open Folder')}</span>
               </button>
 
               <button
@@ -1042,7 +1044,7 @@ export default function EditorArea({
                 className="w-full bg-[#181818] hover:bg-[#252526] text-[#CCCCCC] hover:text-[#FFFFFF] py-2 px-4 rounded-[4px] font-medium text-xs flex items-center justify-center gap-2 transition-colors duration-100"
               >
                 <Play size={14} className="text-[#0078D4]" />
-                <span>Decompile APK</span>
+                <span>{t('welcome.decompile', 'Decompile APK')}</span>
               </button>
 
               <button
@@ -1067,7 +1069,7 @@ export default function EditorArea({
               <div className="w-full max-w-sm flex flex-col gap-2 pt-4">
                 <div className="flex items-center justify-between text-xs text-[#696969]">
                   <span className="font-medium tracking-wide uppercase text-[10px]">
-                    Recent Workspaces
+                    {t('welcome.recentWorkspaces', 'Recent Workspaces')}
                   </span>
                   {recentList.length > 4 && (
                     <button

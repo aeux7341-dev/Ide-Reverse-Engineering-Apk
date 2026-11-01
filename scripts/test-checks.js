@@ -2,7 +2,24 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 
-console.log('Running ApkRtool IDE v0.2.0 Self-Checks...');
+console.log('Running ApkRtool IDE v0.3.0 Self-Checks...');
+
+// 0. Version checks
+const pkg = require('../package.json');
+const frontPkg = require('../frontend/package.json');
+assert.strictEqual(pkg.version, '0.3.0', 'Root version must be 0.3.0');
+assert.strictEqual(frontPkg.version, '0.3.0', 'Frontend version must be 0.3.0');
+console.log('✓ Project version 0.3.0 verified across all packages');
+
+// 0.1 i18n checks
+const i18nFile = path.resolve(__dirname, '..', 'frontend', 'src', 'utils', 'i18n.tsx');
+assert(fs.existsSync(i18nFile), 'i18n.tsx must exist');
+const i18nContent = fs.readFileSync(i18nFile, 'utf8');
+const langCodes = ['en', 'id', 'zh', 'hi', 'es', 'ar', 'fr', 'bn', 'pt', 'ru', 'ja'];
+langCodes.forEach(code => {
+  assert(i18nContent.includes(`code: '${code}'`), `Language '${code}' must be registered in LANGUAGES`);
+});
+console.log('✓ 11 World Languages verified in i18n engine (Default: en)');
 
 // 1. Tools Directory
 const toolsDir = path.resolve(__dirname, '..', 'tools');

@@ -9,6 +9,7 @@ import CommandPalette from './components/CommandPalette';
 import BuildLogModal from './components/BuildLogModal';
 import SkillsModal from './components/SkillsModal';
 import McpModal from './components/McpModal';
+import SettingsModal from './components/SettingsModal';
 import AiAgentPanel, { ChatMessage } from './components/AiAgentPanel';
 import BottomPanel, { BottomTabType } from './components/BottomPanel';
 import {
@@ -256,6 +257,7 @@ export default function App() {
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
   const [isMcpModalOpen, setIsMcpModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Bottom Dock Panel (Terminal, APK Runner, Output, Problems)
   const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false);
@@ -1143,7 +1145,7 @@ export default function App() {
   };
 
   const handlePreferences = () => {
-    setActivePanel('settings');
+    setIsSettingsModalOpen(true);
   };
 
   const handleRevertFile = async () => {
@@ -1709,6 +1711,7 @@ export default function App() {
           onToggleSidebar={() => setIsSidebarOpen((p) => !p)}
           isAiPanelOpen={isAiPanelOpen}
           onToggleAiPanel={() => setIsAiPanelOpen((p) => !p)}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
         />
 
         {isSidebarOpen && (
@@ -1994,6 +1997,22 @@ export default function App() {
         isOpen={isMcpModalOpen}
         onClose={() => setIsMcpModalOpen(false)}
         onStatusMessage={setStatusMessage}
+      />
+
+      {/* Draggable Desktop Settings Window */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        geminiApiKey={geminiApiKey}
+        onGeminiApiKeyChange={setGeminiApiKey}
+        decompilerType={decompilerType}
+        onSelectDecompiler={setDecompilerType}
+        compilerBackend={compilerBackend}
+        onSelectCompilerBackend={setCompilerBackend}
+        theme={editorTheme}
+        onSelectTheme={setEditorTheme}
+        onOpenSkillsModal={() => setIsSkillsModalOpen(true)}
+        onOpenMcpModal={() => setIsMcpModalOpen(true)}
       />
     </div>
   );
