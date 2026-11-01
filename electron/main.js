@@ -898,6 +898,11 @@ ipcMain.handle('ai-agent-run', async (event, params) => {
         sender.send('ai-agent-step', step);
       }
     },
+    onFileModified: (filename) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('workspace-changed', { eventType: 'change', filename });
+      }
+    },
   });
 
   return result;

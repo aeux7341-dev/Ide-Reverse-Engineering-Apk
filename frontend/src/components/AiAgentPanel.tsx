@@ -10,8 +10,111 @@ import {
   Sparkles,
   Cpu,
   X,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Edit3,
+  Search,
 } from 'lucide-react';
 import { SkillItem } from './SkillsModal';
+
+export interface ActiveToolItem {
+  id: string;
+  name: string;
+  args?: any;
+  output?: string;
+  isFinished: boolean;
+}
+
+export function ToolExecutionCard({
+  name,
+  args,
+  output,
+  isFinished = true,
+}: {
+  name: string;
+  args?: any;
+  output?: string;
+  isFinished?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  let icon = <Cpu size={12} className="text-[#A371F7] shrink-0" />;
+  if (name === 'run_command') icon = <Terminal size={12} className="text-[#0078D4] shrink-0" />;
+  else if (name === 'read_file') icon = <FileText size={12} className="text-[#388BFD] shrink-0" />;
+  else if (name === 'write_file' || name === 'edit_file') icon = <Edit3 size={12} className="text-[#3FB950] shrink-0" />;
+  else if (name === 'glob_files' || name === 'grep_search' || name === 'list_dir') icon = <Search size={12} className="text-[#D29922] shrink-0" />;
+
+  const targetLabel =
+    args?.command ||
+    args?.path ||
+    args?.pattern ||
+    args?.repo_or_url ||
+    (typeof args === 'string' ? args : '');
+
+  const isError = output && (output.startsWith('Error') || output.includes('Command failed'));
+
+  return (
+    <div className="border border-[#2D2D2D] bg-[#1E1E1E] rounded-[4px] overflow-hidden my-1 text-xs">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-[#252526] transition-colors select-none"
+      >
+        <div className="flex items-center gap-2 truncate">
+          {icon}
+          <span className="font-mono text-[11px] font-semibold text-[#CCCCCC]">{name}</span>
+          {targetLabel && (
+            <span className="font-mono text-[10px] text-[#858585] truncate max-w-[190px]">
+              {targetLabel}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {!isFinished ? (
+            <div className="animate-spin h-3 w-3 border-2 border-t-transparent border-[#0078D4] rounded-full" />
+          ) : isError ? (
+            <AlertCircle size={12} className="text-[#F85149]" />
+          ) : (
+            <CheckCircle2 size={12} className="text-[#3FB950]" />
+          )}
+          {expanded ? (
+            <ChevronDown size={13} className="text-[#858585]" />
+          ) : (
+            <ChevronRight size={13} className="text-[#858585]" />
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-[#2D2D2D] bg-[#141414] p-2 font-mono text-[10px] space-y-1.5 max-h-56 overflow-y-auto">
+          {args && (
+            <div>
+              <div className="text-[#858585] font-semibold uppercase text-[9px] mb-0.5">Parameters:</div>
+              <pre className="text-[#9CDCFE] bg-[#1A1A1A] p-1.5 rounded whitespace-pre-wrap break-all">
+                {typeof args === 'string' ? args : JSON.stringify(args, null, 2)}
+              </pre>
+            </div>
+          )}
+          {output && (
+            <div>
+              <div className="text-[#858585] font-semibold uppercase text-[9px] mb-0.5">Output:</div>
+              <pre
+                className={`p-1.5 rounded whitespace-pre-wrap break-all font-mono ${
+                  isError ? 'text-[#F85149] bg-[#2A1515]' : 'text-[#CCCCCC] bg-[#1A1A1A]'
+                }`}
+              >
+                {output}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface AgentStep {
   step: number;
@@ -59,6 +162,7 @@ export default function AiAgentPanel({
   const [query, setQuery] = useState('');
   const [isAgentRunning, setIsAgentRunning] = useState(false);
   const [currentSteps, setCurrentSteps] = useState<AgentStep[]>([]);
+  const [activeTools, setActiveTools] = useState<ActiveToolItem[]>([]);
   const [activeStatusMsg, setActiveStatusMsg] = useState('');
 
   // Provider and model options
@@ -118,16 +222,25 @@ export default function AiAgentPanel({
         if (step.type === 'status') {
           setActiveStatusMsg(step.data?.message || 'Processing...');
         } else if (step.type === 'tool_start') {
-          setActiveStatusMsg(`Executing tool: ${step.data?.name}`);
-          setCurrentSteps((prev) => [
+          setActiveStatusMsg(`Executing: ${step.data?.name}`);
+          const toolId = step.data?.id || `tool_${Date.now()}_${Math.random()}`;
+          setActiveTools((prev) => [
             ...prev,
-            { step: prev.length + 1, type: 'tool_start', data: step.data },
+            {
+              id: toolId,
+              name: step.data?.name,
+              args: step.data?.args,
+              isFinished: false,
+            },
           ]);
         } else if (step.type === 'tool_finish') {
-          setCurrentSteps((prev) => [
-            ...prev,
-            { step: prev.length + 1, type: 'tool_finish', data: step.data },
-          ]);
+          setActiveTools((prev) =>
+            prev.map((t) =>
+              t.id === step.data?.id || t.name === step.data?.name
+                ? { ...t, output: step.data?.output, isFinished: true }
+                : t
+            )
+          );
         }
       });
       return () => unsub();
@@ -160,6 +273,7 @@ export default function AiAgentPanel({
 
     setIsAgentRunning(true);
     setCurrentSteps([]);
+    setActiveTools([]);
     setActiveStatusMsg('Initializing Autonomous Agent...');
 
     try {
@@ -455,25 +569,34 @@ export default function AiAgentPanel({
 
                   {/* Render Execution Steps Cards if present */}
                   {msg.steps && msg.steps.length > 0 && (
-                    <div className="my-1.5 space-y-1">
+                    <div className="my-2 space-y-1">
                       {msg.steps.map((st, i) => (
-                        <div
-                          key={i}
-                          className="bg-[#1F1F1F] rounded-[3px] p-2 font-mono text-[10px]"
-                        >
-                          {st.type === 'tool_calls' && st.toolCalls && (
-                            <div className="space-y-0.5">
-                              <span className="text-[#0078D4] font-semibold block">
-                                Tool Execution ({st.toolCalls.length}):
-                              </span>
-                              {st.toolCalls.map((tc, tcIdx) => (
-                                <div key={tcIdx} className="text-[#FFFFFF] truncate">
-                                  &gt; {tc.function.name}({tc.function.arguments})
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <React.Fragment key={i}>
+                          {st.type === 'tool_calls' &&
+                            st.toolCalls &&
+                            st.toolCalls.map((tc, tcIdx) => {
+                              let fnArgs = tc.parsedArgs;
+                              if (!fnArgs && tc.function?.arguments) {
+                                try {
+                                  fnArgs =
+                                    typeof tc.function.arguments === 'string'
+                                      ? JSON.parse(tc.function.arguments)
+                                      : tc.function.arguments;
+                                } catch {
+                                  fnArgs = tc.function.arguments;
+                                }
+                              }
+                              return (
+                                <ToolExecutionCard
+                                  key={tc.id || tcIdx}
+                                  name={tc.function?.name || 'tool'}
+                                  args={fnArgs}
+                                  output={tc.output}
+                                  isFinished={true}
+                                />
+                              );
+                            })}
+                        </React.Fragment>
                       ))}
                     </div>
                   )}
@@ -485,27 +608,22 @@ export default function AiAgentPanel({
 
             {/* In-Flight Agent Running Indicator */}
             {isAgentRunning && (
-              <div className="bg-[#181818] rounded-[4px] p-2.5 self-start flex flex-col gap-1.5 text-xs text-[#696969] max-w-[95%]">
+              <div className="bg-[#181818] rounded-[4px] p-2.5 self-start flex flex-col gap-2 text-xs text-[#696969] max-w-[95%] w-full">
                 <div className="flex items-center gap-2 text-[#0078D4] font-medium">
-                  <div className="animate-spin h-3.5 w-3.5 border-b-2 border-[#0078D4] rounded-full" />
-                  <span>{activeStatusMsg || 'Agent thinking...'}</span>
+                  <div className="animate-spin h-3.5 w-3.5 border-2 border-t-transparent border-[#0078D4] rounded-full shrink-0" />
+                  <span className="truncate">{activeStatusMsg || 'Agent thinking...'}</span>
                 </div>
 
-                {currentSteps.length > 0 && (
-                  <div className="space-y-0.5 pl-3 font-mono text-[10px] text-[#FFFFFF]">
-                    {currentSteps.map((st, idx) => (
-                      <div key={idx} className="truncate">
-                        {st.type === 'tool_start' && (
-                          <span className="text-[#0078D4]">
-                            Started: {st.data?.name}
-                          </span>
-                        )}
-                        {st.type === 'tool_finish' && (
-                          <span className="text-[#FFFFFF]">
-                            Done: {st.data?.name}
-                          </span>
-                        )}
-                      </div>
+                {activeTools.length > 0 && (
+                  <div className="space-y-1">
+                    {activeTools.map((t) => (
+                      <ToolExecutionCard
+                        key={t.id}
+                        name={t.name}
+                        args={t.args}
+                        output={t.output}
+                        isFinished={t.isFinished}
+                      />
                     ))}
                   </div>
                 )}

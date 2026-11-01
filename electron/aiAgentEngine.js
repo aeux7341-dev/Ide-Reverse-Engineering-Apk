@@ -4,6 +4,25 @@ const { exec } = require('child_process');
 const { getSkillManager } = require('./skillManager');
 const { getMcpManager } = require('./mcpManager');
 
+function getToolsDir() {
+  const packagedPath = path.join(process.resourcesPath || '', 'tools');
+  if (fs.existsSync(packagedPath)) return packagedPath;
+  return path.resolve(__dirname, '..', 'tools');
+}
+
+function getEnhancedPath(toolsDir) {
+  const resolvedTools = path.resolve(toolsDir);
+  const delimiter = path.delimiter;
+  const pathsToAdd = [
+    path.join(resolvedTools, 'android-sdk', 'platform-tools'),
+    path.join(resolvedTools, 'android-sdk', 'build-tools', '35.0.0'),
+    path.join(resolvedTools, 'jdk', 'jdk11.0.31_11', 'bin'),
+    path.join(resolvedTools, 'jadx', 'bin'),
+    resolvedTools,
+  ];
+  return pathsToAdd.filter((p) => fs.existsSync(p)).join(delimiter) + delimiter + (process.env.PATH || '');
+}
+
 /**
  * KeyPool manages multiple API keys, round-robin dispatch, and auto-failover on 429/quota errors.
  */
@@ -89,12 +108,14 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'read_file',
-        description: 'Read the contents of a file in the workspace or filesystem.',
+        description:
+          'Read the contents of a file in the workspace or filesystem. Returns line-numbered content (<line>: <content>). You can read ANY file across the entire workspace, not only the active open file.',
         parameters: {
           type: 'object',
           properties: {
             path: { type: 'string', description: 'Relative path from workspace root or absolute path' },
-            limit: { type: 'number', description: 'Maximum number of lines to read (optional)' },
+            offset: { type: 'number', description: 'The 1-based line number to start reading from (default: 1)' },
+            limit: { type: 'number', description: 'Maximum number of lines to read (default: 2000)' },
           },
           required: ['path'],
         },
@@ -104,12 +125,12 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'write_file',
-        description: 'Create or overwrite a file in the workspace with new content.',
+        description: 'Create or completely overwrite a file in the workspace with new content. Automatically creates parent directories.',
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Relative path to file' },
-            content: { type: 'string', description: 'Full content to write' },
+            path: { type: 'string', description: 'Relative path from workspace root or absolute path' },
+            content: { type: 'string', description: 'Full content to write to the file' },
           },
           required: ['path', 'content'],
         },
@@ -119,13 +140,15 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'edit_file',
-        description: 'Find and replace exact text in a file.',
+        description:
+          'Make precise edits to a file by finding exact text and replacing it. Fails if old_string is ambiguous unless replace_all is true.',
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Path to file' },
-            old_string: { type: 'string', description: 'Exact string to find and replace' },
-            new_string: { type: 'string', description: 'Replacement string' },
+            path: { type: 'string', description: 'Relative path or absolute path to the target file' },
+            old_string: { type: 'string', description: 'Exact text segment to find and replace' },
+            new_string: { type: 'string', description: 'Exact replacement text' },
+            replace_all: { type: 'boolean', description: 'Whether to replace every occurrence (default: false)' },
           },
           required: ['path', 'old_string', 'new_string'],
         },
@@ -135,11 +158,11 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'list_dir',
-        description: 'List files and directories in a given path.',
+        description: 'List files and directories in a given workspace path.',
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Relative path from workspace root (empty for root)' },
+            path: { type: 'string', description: 'Relative path from workspace root (empty for workspace root)' },
           },
         },
       },
@@ -147,8 +170,24 @@ function getAgentToolsSchema(mcpTools = []) {
     {
       type: 'function',
       function: {
+        name: 'glob_files',
+        description:
+          'Search file paths using a glob pattern (e.g. "**/*.smali", "res/**/*.xml", "src/**/*.java"). Essential for locating classes and resources.',
+        parameters: {
+          type: 'object',
+          properties: {
+            pattern: { type: 'string', description: 'Glob pattern to match against (e.g. "**/*.smali", "AndroidManifest.xml")' },
+            path: { type: 'string', description: 'Subdirectory to search inside (optional)' },
+          },
+          required: ['pattern'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
         name: 'grep_search',
-        description: 'Search for text or regular expression across workspace files.',
+        description: 'Search for text or regular expressions across workspace files.',
         parameters: {
           type: 'object',
           properties: {
@@ -164,11 +203,13 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'run_command',
-        description: 'Execute a safe shell command (adb, apktool, jadx, git, etc.) in the workspace.',
+        description:
+          'Execute a shell command (adb, apktool, jadx, git, powershell, python, etc.) in the workspace terminal environment. All embedded Android SDK/JDK tools are pre-configured in PATH.',
         parameters: {
           type: 'object',
           properties: {
-            command: { type: 'string', description: 'Command to run' },
+            command: { type: 'string', description: 'Terminal command string to execute' },
+            timeout: { type: 'number', description: 'Timeout in milliseconds (default: 60000)' },
           },
           required: ['command'],
         },
@@ -178,11 +219,11 @@ function getAgentToolsSchema(mcpTools = []) {
       type: 'function',
       function: {
         name: 'install_github_skill',
-        description: 'Install and activate an expert skill directly from GitHub (e.g. bergside/awesome-design-skills or owner/repo/path/SKILL.md).',
+        description: 'Install and activate an expert skill directly from GitHub (e.g. owner/repo or raw link).',
         parameters: {
           type: 'object',
           properties: {
-            repo_or_url: { type: 'string', description: 'GitHub repo or URL (e.g. owner/repo, or raw GitHub link)' },
+            repo_or_url: { type: 'string', description: 'GitHub repo or URL' },
           },
           required: ['repo_or_url'],
         },
@@ -225,7 +266,7 @@ function getAgentToolsSchema(mcpTools = []) {
  * Execute a tool call against the local workspace environment or MCP server
  */
 async function executeAgentTool(toolName, args, context) {
-  const { workspacePath, mcpManager, skillManager } = context;
+  const { workspacePath, mcpManager, skillManager, onFileModified } = context;
 
   // Handle direct MCP tool prefix: mcp__<server>__<tool>
   if (toolName.startsWith('mcp__')) {
@@ -249,20 +290,29 @@ async function executeAgentTool(toolName, args, context) {
 
       const stat = fs.statSync(targetPath);
       if (stat.isDirectory()) {
-        return `Error: ${args.path} is a directory, use list_dir instead`;
+        return `Error: ${args.path} is a directory. Use list_dir or glob_files instead.`;
       }
 
-      // Check binary extension
-      if (/\.(so|dex|arsc|png|jpg|jar|apk)$/i.test(targetPath)) {
-        return `File is binary (${stat.size} bytes). Use dedicated decompilers or hex inspection.`;
+      if (/\.(so|dex|arsc|png|jpg|jpeg|webp|gif|jar|apk|zip|ico)$/i.test(targetPath)) {
+        return `File is binary (${stat.size} bytes). Binary files cannot be displayed as plain text.`;
       }
 
       const content = fs.readFileSync(targetPath, 'utf8');
-      if (args.limit && args.limit > 0) {
-        const lines = content.split('\n').slice(0, args.limit);
-        return lines.join('\n') + `\n... [truncated at ${args.limit} lines]`;
+      const lines = content.split('\n');
+      const totalLines = lines.length;
+      const offset = Math.max(1, parseInt(args.offset, 10) || 1);
+      const limit = Math.max(1, parseInt(args.limit, 10) || 2000);
+
+      const startIndex = offset - 1;
+      const slice = lines.slice(startIndex, startIndex + limit);
+
+      const numbered = slice.map((line, idx) => `${startIndex + idx + 1}: ${line}`);
+      let output = numbered.join('\n');
+
+      if (startIndex + limit < totalLines) {
+        output += `\n\n... [Showing lines ${offset}-${startIndex + limit} of ${totalLines}. Use offset=${startIndex + limit + 1} to read more]`;
       }
-      return content.length > 25000 ? content.slice(0, 25000) + '\n... [truncated 25k chars]' : content;
+      return output;
     }
 
     case 'write_file': {
@@ -277,7 +327,10 @@ async function executeAgentTool(toolName, args, context) {
       }
 
       fs.writeFileSync(targetPath, args.content || '', 'utf8');
-      return `File written successfully: ${args.path} (${(args.content || '').length} chars)`;
+      if (typeof onFileModified === 'function') {
+        onFileModified(targetPath);
+      }
+      return `File written successfully: ${args.path} (${(args.content || '').length} characters)`;
     }
 
     case 'edit_file': {
@@ -293,18 +346,49 @@ async function executeAgentTool(toolName, args, context) {
       }
 
       const content = fs.readFileSync(targetPath, 'utf8');
+      const replaceAll = !!args.replace_all;
+
+      // 1. Direct match
       if (!content.includes(args.old_string)) {
-        return `Error: old_string not found in ${args.path}`;
+        // Relax line-endings (\r\n vs \n)
+        const normContent = content.replace(/\r\n/g, '\n');
+        const normOld = args.old_string.replace(/\r\n/g, '\n');
+
+        if (!normContent.includes(normOld)) {
+          return `Error: old_string not found in ${args.path}. Ensure exact indentation and content match.`;
+        }
+
+        const normNew = args.new_string.replace(/\r\n/g, '\n');
+        const occurrences = normContent.split(normOld).length - 1;
+        if (occurrences > 1 && !replaceAll) {
+          return `Error: old_string occurs ${occurrences} times in ${args.path}. Provide more surrounding lines to make it unique or set replace_all: true.`;
+        }
+
+        const updated = replaceAll
+          ? normContent.split(normOld).join(normNew)
+          : normContent.replace(normOld, normNew);
+
+        fs.writeFileSync(targetPath, updated, 'utf8');
+        if (typeof onFileModified === 'function') {
+          onFileModified(targetPath);
+        }
+        return `Successfully replaced ${replaceAll ? occurrences : 1} occurrence(s) in ${args.path}`;
       }
 
       const occurrences = content.split(args.old_string).length - 1;
-      if (occurrences > 1) {
-        return `Error: old_string occurs ${occurrences} times. Add more surrounding context to make it unique.`;
+      if (occurrences > 1 && !replaceAll) {
+        return `Error: old_string occurs ${occurrences} times in ${args.path}. Provide more surrounding context to make it unique or set replace_all: true.`;
       }
 
-      const updated = content.replace(args.old_string, args.new_string);
+      const updated = replaceAll
+        ? content.split(args.old_string).join(args.new_string)
+        : content.replace(args.old_string, args.new_string);
+
       fs.writeFileSync(targetPath, updated, 'utf8');
-      return `Successfully replaced 1 occurrence in ${args.path}`;
+      if (typeof onFileModified === 'function') {
+        onFileModified(targetPath);
+      }
+      return `Successfully replaced ${replaceAll ? occurrences : 1} occurrence(s) in ${args.path}`;
     }
 
     case 'list_dir': {
@@ -319,8 +403,65 @@ async function executeAgentTool(toolName, args, context) {
       }
 
       const entries = fs.readdirSync(targetDir, { withFileTypes: true });
-      const formatted = entries.map((e) => `${e.isDirectory() ? '[DIR] ' : '      '}${e.name}`);
+      const formatted = entries.map((e) => {
+        if (e.isDirectory()) return `[DIR]  ${e.name}/`;
+        try {
+          const sz = fs.statSync(path.join(targetDir, e.name)).size;
+          return `[FILE] ${e.name} (${sz} bytes)`;
+        } catch {
+          return `[FILE] ${e.name}`;
+        }
+      });
       return formatted.join('\n') || '(empty directory)';
+    }
+
+    case 'glob_files': {
+      if (!args.pattern) throw new Error('pattern required (e.g. "**/*.smali")');
+      const searchRoot = args.path
+        ? path.isAbsolute(args.path)
+          ? args.path
+          : path.join(workspacePath || process.cwd(), args.path)
+        : workspacePath || process.cwd();
+
+      if (!fs.existsSync(searchRoot)) {
+        return `Error: Directory not found: ${args.path || '.'}`;
+      }
+
+      const results = [];
+      const pattern = args.pattern.trim();
+      const escaped = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '§§')
+        .replace(/\*/g, '[^/\\\\]*')
+        .replace(/§§/g, '.*');
+      const globRegex = new RegExp(`^${escaped}$`, 'i');
+
+      function crawl(dir, depth = 0) {
+        if (depth > 12 || results.length >= 150) return;
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const ent of entries) {
+            if (results.length >= 150) break;
+            const full = path.join(dir, ent.name);
+            const rel = path.relative(searchRoot, full).replace(/\\/g, '/');
+            if (ent.isDirectory()) {
+              if (ent.name !== 'node_modules' && ent.name !== '.git' && ent.name !== 'build') {
+                crawl(full, depth + 1);
+              }
+            } else if (ent.isFile()) {
+              if (globRegex.test(rel) || globRegex.test(ent.name)) {
+                results.push(rel);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      crawl(searchRoot);
+      if (results.length === 0) {
+        return `No files matching pattern "${args.pattern}" found in ${args.path || 'workspace'}.`;
+      }
+      return results.join('\n') + (results.length >= 150 ? '\n... [results truncated at 150 items]' : '');
     }
 
     case 'grep_search': {
@@ -344,8 +485,14 @@ async function executeAgentTool(toolName, args, context) {
       }
 
       function crawl(dir) {
-        if (results.length >= 50) return;
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        if (results.length >= 80) return;
+        let entries = [];
+        try {
+          entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+
         for (const e of entries) {
           if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'build') continue;
           const full = path.join(dir, e.name);
@@ -361,9 +508,9 @@ async function executeAgentTool(toolName, args, context) {
               const lines = text.split('\n');
               for (let i = 0; i < lines.length; i++) {
                 if (regex.test(lines[i])) {
-                  const rel = path.relative(searchRoot, full);
+                  const rel = path.relative(searchRoot, full).replace(/\\/g, '/');
                   results.push(`${rel}:${i + 1}: ${lines[i].trim()}`);
-                  if (results.length >= 50) break;
+                  if (results.length >= 80) break;
                 }
               }
             } catch {}
@@ -378,14 +525,31 @@ async function executeAgentTool(toolName, args, context) {
     case 'run_command': {
       if (!args.command) throw new Error('Command required');
       const cwd = workspacePath && fs.existsSync(workspacePath) ? workspacePath : process.cwd();
+      const toolsDir = getToolsDir();
+      const enhancedPath = getEnhancedPath(toolsDir);
+
+      const env = {
+        ...process.env,
+        PATH: enhancedPath,
+        ANDROID_HOME: path.join(path.resolve(toolsDir), 'android-sdk'),
+        JAVA_HOME: path.join(path.resolve(toolsDir), 'jdk', 'jdk11.0.31_11'),
+      };
+
+      const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/sh';
+      const timeout = Math.min(180000, Math.max(5000, parseInt(args.timeout, 10) || 60000));
 
       return new Promise((resolve) => {
-        exec(args.command, { cwd, timeout: 25000, maxBuffer: 1024 * 1024 * 5 }, (err, stdout, stderr) => {
-          if (err) {
-            resolve(`Error (code ${err.code}):\n${stderr || err.message}\n${stdout || ''}`);
-          } else {
-            resolve(stdout || stderr || '(Command completed with no output)');
+        exec(args.command, { cwd, env, shell, timeout, maxBuffer: 1024 * 1024 * 10 }, (err, stdout, stderr) => {
+          let output = '';
+          if (stdout) output += stdout;
+          if (stderr) output += (output ? '\n[stderr]\n' : '') + stderr;
+          if (err && !output) {
+            output = `Command failed (code ${err.code || 'ERR'}):\n${err.message}`;
           }
+          if (output.length > 40000) {
+            output = output.slice(0, 40000) + '\n... [output truncated at 40k chars]';
+          }
+          resolve(output || '(Command completed with no output)');
         });
       });
     }
@@ -530,17 +694,21 @@ class AiAgentEngine {
         }
         contents.push({ role: 'model', parts });
       } else if (msg.role === 'tool') {
-        contents.push({
-          role: 'user',
-          parts: [
-            {
-              functionResponse: {
-                name: msg.name,
-                response: { output: msg.content },
-              },
-            },
-          ],
-        });
+        const fnPart = {
+          functionResponse: {
+            name: msg.name,
+            response: { output: msg.content },
+          },
+        };
+        const lastContent = contents[contents.length - 1];
+        if (lastContent && lastContent.role === 'function') {
+          lastContent.parts.push(fnPart);
+        } else {
+          contents.push({
+            role: 'function',
+            parts: [fnPart],
+          });
+        }
       }
     }
 
@@ -715,6 +883,7 @@ class AiAgentEngine {
     model = 'gemini-2.5-flash',
     options = {},
     onStep, // callback({ type, data })
+    onFileModified,
   }) {
     const mcpTools = await this.mcpManager.getAllTools();
     const toolsSchema = getAgentToolsSchema(mcpTools);
@@ -722,7 +891,16 @@ class AiAgentEngine {
 
     const systemPrompt = `You are the ApkRtool IDE Autonomous Engineering Agent, inspired by Antigravity IDE.
 You specialize in Android reverse engineering, APK decompilation, Dalvik Smali bytecode surgery, Java pseudocode analysis, security audits, and Frida instrumentation.
-You have native access to IDE tools (read_file, write_file, edit_file, list_dir, grep_search, run_command, install_github_skill, and connected MCP tools).
+You have full native access to workspace tools:
+- read_file(path, offset, limit): Read ANY file across the entire workspace with line numbers (<line>: <content>).
+- write_file(path, content): Create or overwrite any file (auto-creates directories).
+- edit_file(path, old_string, new_string, replace_all): Precise find-and-replace text modifications.
+- list_dir(path): List files and directories in any folder.
+- glob_files(pattern, path): Search and locate files using glob patterns (e.g. "**/*.smali", "res/**/*.xml").
+- grep_search(pattern, path, include): Search text or regex across workspace files.
+- run_command(command, timeout): Execute shell commands (adb, apktool, jadx, git, powershell) with Android SDK and JDK pre-configured in PATH.
+- install_github_skill(repo_or_url): Install expert skill from GitHub.
+- call_mcp_tool(server, tool, arguments): Run Model Context Protocol server tools.
 
 WORKSPACE CONTEXT:
 Workspace Root: ${workspacePath || 'No folder open (standalone mode)'}
@@ -731,7 +909,7 @@ ${fileContent ? `Active File Snapshot:\n\`\`\`\n${fileContent.slice(0, 10000)}\n
 ${skillsPrompt}
 
 INSTRUCTIONS:
-1. When asked to inspect, analyze, or modify code, use the tools to read files, search methods, and execute edits.
+1. You are autonomous: investigate the codebase, find target files with glob_files or grep_search, inspect them with read_file, make changes with edit_file or write_file, and verify with run_command if needed.
 2. Provide concise, high-density explanations. Avoid fluff.
 3. If an edit is requested, prefer \`edit_file\` with exact context strings.
 4. When done, output a clear summary of findings or actions taken.`;
@@ -742,7 +920,7 @@ INSTRUCTIONS:
       { role: 'user', content: prompt },
     ];
 
-    const maxSteps = options.maxSteps || 8;
+    const maxSteps = options.maxSteps || 16;
     const executionTrace = [];
 
     for (let step = 0; step < maxSteps; step++) {
@@ -821,10 +999,14 @@ INSTRUCTIONS:
             workspacePath,
             mcpManager: this.mcpManager,
             skillManager: this.skillManager,
+            onFileModified: onFileModified || options.onFileModified,
           });
         } catch (err) {
           output = `Error executing tool ${fnName}: ${err.message}`;
         }
+
+        tc.output = output;
+        tc.parsedArgs = fnArgs;
 
         if (onStep) {
           onStep({
