@@ -112,6 +112,97 @@ const TerminalPanel = forwardRef<TerminalPanelRef, TerminalPanelProps>(
       term.loadAddon(fitAddon);
       term.open(termWrapper);
 
+      // Link provider: recognizes URLs, underlines them, and opens them on click/ctrl+click
+      const urlRegex = /(https?:\/\/[^\s<>"'{}|\\^`]+)/g;
+      term.registerLinkProvider({
+        provideLinks(bufferLineNumber, callback) {
+          const line = term.buffer.active.getLine(bufferLineNumber - 1);
+          if (!line) return callback(undefined);
+          const lineText = line.translateToString(true);
+          const links: any[] = [];
+          let match: RegExpExecArray | null;
+          urlRegex.lastIndex = 0;
+          while ((match = urlRegex.exec(lineText)) !== null) {
+            const url = match[1];
+            const startX = match.index + 1;
+            const endX = startX + url.length;
+            links.push({
+              text: url,
+              range: {
+                start: { x: startX, y: bufferLineNumber },
+                end: { x: endX, y: bufferLineNumber },
+              },
+              decorations: {
+                pointerCursor: true,
+                underline: true,
+              },
+              activate(_event: MouseEvent, text: string) {
+                const electron = (window as any).electronAPI;
+                if (electron?.openExternal) {
+                  electron.openExternal(text);
+                } else {
+                  window.open(text, '_blank');
+                }
+              },
+            });
+          }
+          callback(links);
+        },
+      });
+
+      // Keyboard handler: Ctrl+C copies selection, Ctrl+V pastes
+      term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+        if (e.type === 'keydown') {
+          // Ctrl+C with text selected -> copy selection to clipboard
+          if (e.ctrlKey && (e.key === 'c' || e.key === 'C') && term.hasSelection()) {
+            navigator.clipboard.writeText(term.getSelection());
+            return false;
+          }
+          // Ctrl+Shift+C -> always copy selection
+          if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c') && term.hasSelection()) {
+            navigator.clipboard.writeText(term.getSelection());
+            return false;
+          }
+          // Ctrl+Shift+V or Ctrl+V -> paste
+          if (
+            (e.ctrlKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) ||
+            (e.ctrlKey && (e.key === 'v' || e.key === 'v'))
+          ) {
+            navigator.clipboard.readText().then((clipText) => {
+              if (clipText) {
+                const electron = (window as any).electronAPI;
+                if (electron?.sendTerminalInput) {
+                  electron.sendTerminalInput(id, clipText);
+                } else {
+                  term.write(clipText);
+                }
+              }
+            });
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Right-click on terminal: copy if selection exists, else paste from clipboard
+      termWrapper.addEventListener('contextmenu', (e: MouseEvent) => {
+        e.preventDefault();
+        if (term.hasSelection()) {
+          navigator.clipboard.writeText(term.getSelection());
+        } else {
+          navigator.clipboard.readText().then((clipText) => {
+            if (clipText) {
+              const electron = (window as any).electronAPI;
+              if (electron?.sendTerminalInput) {
+                electron.sendTerminalInput(id, clipText);
+              } else {
+                term.write(clipText);
+              }
+            }
+          });
+        }
+      });
+
       // Perform initial fit
       requestAnimationFrame(() => {
         try {

@@ -743,7 +743,7 @@ export default function Navbar({
                 <span>Quick Tour</span>
               </button>
               <button 
-                onClick={() => runActionAndClose(() => alert('ApkRtool IDE v0.2.0\nReverse Engineering Platform.'))}
+                onClick={() => runActionAndClose(() => alert('ApkRtool IDE v0.3.5\nReverse Engineering Platform.'))}
                 className="w-full text-left px-3 py-1.5 hover:bg-[#0078D4] hover:text-white flex items-center gap-2 transition-colors duration-75"
               >
                 <Info size={14} className="text-[#696969]" />

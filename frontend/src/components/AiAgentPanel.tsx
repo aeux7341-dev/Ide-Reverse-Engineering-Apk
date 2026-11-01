@@ -5,7 +5,6 @@ import {
   Trash2,
   Key,
   Play,
-  RotateCcw,
   Layers,
   Sparkles,
   Cpu,
@@ -18,7 +17,9 @@ import {
   AlertCircle,
   Edit3,
   Search,
+  Square,
 } from 'lucide-react';
+import MarkdownContent from './MarkdownContent';
 import { SkillItem } from './SkillsModal';
 
 export interface ActiveToolItem {
@@ -393,6 +394,17 @@ export default function AiAgentPanel({
     }
   };
 
+  const handleCancelAgent = async () => {
+    try {
+      if (electronAPI?.aiAgentCancel) {
+        await electronAPI.aiAgentCancel();
+      }
+    } catch {}
+    setIsAgentRunning(false);
+    setIsBulkRunning(false);
+    setActiveStatusMsg('Agent execution stopped (Matikan paksa).');
+  };
+
   // Run Bulk API batch
   const handleRunBulk = async () => {
     if (!bulkTask.trim() || isBulkRunning) return;
@@ -671,17 +683,32 @@ export default function AiAgentPanel({
                     </div>
                   )}
 
-                  <div className="whitespace-pre-wrap break-words">{msg.text}</div>
+                  {msg.sender === 'assistant' ? (
+                    <MarkdownContent content={msg.text} />
+                  ) : (
+                    <div className="whitespace-pre-wrap break-words">{msg.text}</div>
+                  )}
                 </div>
               ))
             )}
 
             {/* In-Flight Agent Running Indicator */}
             {isAgentRunning && (
-              <div className="bg-[#181818] rounded-[4px] p-2.5 self-start flex flex-col gap-2 text-xs text-[#696969] max-w-[95%] w-full">
-                <div className="flex items-center gap-2 text-[#0078D4] font-medium">
-                  <div className="animate-spin h-3.5 w-3.5 border-2 border-t-transparent border-[#0078D4] rounded-full shrink-0" />
-                  <span className="truncate">{activeStatusMsg || 'Agent thinking...'}</span>
+              <div className="bg-[#181818] rounded-[4px] p-2.5 self-start flex flex-col gap-2 text-xs text-[#696969] max-w-[95%] w-full border border-[#2B2B2B]">
+                <div className="flex items-center justify-between text-[#0078D4] font-medium gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="animate-spin h-3.5 w-3.5 border-2 border-t-transparent border-[#0078D4] rounded-full shrink-0" />
+                    <span className="truncate">{activeStatusMsg || 'Agent thinking...'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelAgent}
+                    className="bg-[#D13438] hover:bg-[#A80000] text-white px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shrink-0 shadow-sm"
+                    title="Matikan Paksa (Force Stop)"
+                  >
+                    <Square size={9} fill="currentColor" />
+                    <span>Matikan Paksa</span>
+                  </button>
                 </div>
 
                 {activeTools.length > 0 && (
@@ -716,13 +743,26 @@ export default function AiAgentPanel({
                 placeholder="Ask agent to audit, patch Smali, or run commands..."
                 className="flex-1 bg-[#1F1F1F] rounded-[3px] px-2.5 py-1.5 text-xs text-[#FFFFFF] placeholder-[#696969] outline-none focus:ring-1 focus:ring-[#0078D4]"
               />
-              <button
-                onClick={() => handleRunAgent()}
-                disabled={isAgentRunning || !query.trim()}
-                className="bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] p-2 rounded-[3px] disabled:opacity-40 transition-colors shrink-0"
-              >
-                <Send size={13} />
-              </button>
+              {isAgentRunning ? (
+                <button
+                  type="button"
+                  onClick={handleCancelAgent}
+                  className="bg-[#D13438] hover:bg-[#A80000] text-white px-2.5 py-1.5 rounded-[3px] text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
+                  title="Matikan Paksa"
+                >
+                  <Square size={11} fill="currentColor" />
+                  <span>Stop</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRunAgent()}
+                  disabled={!query.trim()}
+                  className="bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] p-2 rounded-[3px] disabled:opacity-40 transition-colors shrink-0"
+                >
+                  <Send size={13} />
+                </button>
+              )}
             </div>
             {activeFilePath && (
               <div className="text-[10px] text-[#696969] flex items-center justify-between px-1">
@@ -762,18 +802,26 @@ export default function AiAgentPanel({
               <div className="text-[10px] text-[#696969] truncate max-w-[180px]">
                 Target: {activeFilePath ? activeFilePath.split('/').pop() : 'Open File'}
               </div>
-              <button
-                onClick={handleRunBulk}
-                disabled={isBulkRunning}
-                className="bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] px-3 py-1 rounded-[3px] text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-40 shrink-0"
-              >
-                {isBulkRunning ? (
-                  <RotateCcw size={12} className="animate-spin" />
-                ) : (
+              {isBulkRunning ? (
+                <button
+                  type="button"
+                  onClick={handleCancelAgent}
+                  className="bg-[#D13438] hover:bg-[#A80000] text-[#FFFFFF] px-3 py-1 rounded-[3px] text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
+                  title="Matikan Paksa Batch"
+                >
+                  <Square size={11} fill="currentColor" />
+                  <span>Stop Batch</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRunBulk}
+                  className="bg-[#0078D4] hover:bg-[#1084d8] text-[#FFFFFF] px-3 py-1 rounded-[3px] text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
+                >
                   <Play size={12} />
-                )}
-                <span>Start Batch</span>
-              </button>
+                  <span>Start Batch</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -818,8 +866,8 @@ export default function AiAgentPanel({
                       </span>
                     </div>
                     {res.output && (
-                      <div className="p-2 bg-[#1F1F1F] rounded text-[10px] whitespace-pre-wrap text-[#FFFFFF] select-text">
-                        {res.output}
+                      <div className="p-2 bg-[#1F1F1F] rounded text-[10px] text-[#FFFFFF] select-text">
+                        <MarkdownContent content={res.output} />
                       </div>
                     )}
                     {res.error && (

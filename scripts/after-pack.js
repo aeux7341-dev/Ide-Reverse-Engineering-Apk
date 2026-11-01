@@ -18,8 +18,8 @@ module.exports = async function (context) {
             FileDescription: 'ApkRtool IDE',
             ProductName: 'ApkRtool IDE',
             LegalCopyright: 'Copyright © 2026 ApkRtool',
-            ProductVersion: '0.2.0',
-            FileVersion: '0.2.0.0',
+            ProductVersion: '0.3.5',
+            FileVersion: '0.3.5.0',
           },
         });
         console.log(`[AfterPack] ✅ Successfully embedded custom icon into ${exeName}`);

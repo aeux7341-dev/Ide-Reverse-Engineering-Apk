@@ -158,7 +158,7 @@ npm run build
 
 The resulting package will be output to:
 ```
-release/ApkRtool IDE Setup 0.3.2.exe
+release/ApkRtool IDE Setup 0.3.5.exe
 ```
 
 ---

@@ -70,7 +70,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiSetKeys: (keys) => ipcRenderer.invoke('ai-set-keys', keys),
   aiGetKeyStats: () => ipcRenderer.invoke('ai-get-key-stats'),
   aiAgentRun: (params) => ipcRenderer.invoke('ai-agent-run', params),
+  aiAgentCancel: () => ipcRenderer.invoke('ai-agent-cancel'),
   aiBulkBatch: (params) => ipcRenderer.invoke('ai-bulk-batch', params),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   onAiAgentStep: (callback) => {
     const listener = (_event, step) => callback(step);
     ipcRenderer.on('ai-agent-step', listener);

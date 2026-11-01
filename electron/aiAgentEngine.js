@@ -579,6 +579,16 @@ class AiAgentEngine {
     this.keyPool = new KeyPool();
     this.skillManager = getSkillManager();
     this.mcpManager = getMcpManager();
+    this.currentAbortController = null;
+  }
+
+  abortCurrentRun() {
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+      this.currentAbortController = null;
+      return true;
+    }
+    return false;
   }
 
   setKeyPool(keys) {
@@ -593,6 +603,10 @@ class AiAgentEngine {
    * Run model completion with automatic key failover across provider endpoints
    */
   async callModelWithFailover({ provider = 'gemini', model, messages, tools, options = {} }) {
+    if (options.signal?.aborted) {
+      throw new Error('Agent execution cancelled by user.');
+    }
+
     if (!this.keyPool.hasKeys() && provider !== 'ollama') {
       throw new Error('No API key provided. Please configure one or more API keys in Settings or AI Agent panel.');
     }
@@ -601,6 +615,10 @@ class AiAgentEngine {
     let lastError = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (options.signal?.aborted) {
+        throw new Error('Agent execution cancelled by user.');
+      }
+
       const apiKey = this.keyPool.getActiveKey();
 
       try {
@@ -613,6 +631,7 @@ class AiAgentEngine {
             messages,
             tools,
             temperature: options.temperature,
+            signal: options.signal,
           });
         } else if (provider === 'anthropic') {
           result = await this.callAnthropicApi({
@@ -620,6 +639,7 @@ class AiAgentEngine {
             model: model || 'claude-3-5-sonnet-20241022',
             messages,
             tools,
+            signal: options.signal,
           });
         } else {
           // OpenAI / DeepSeek / Groq / OpenRouter / Ollama
@@ -629,6 +649,7 @@ class AiAgentEngine {
             model: model || 'gpt-4o-mini',
             messages,
             tools,
+            signal: options.signal,
           });
         }
 
@@ -636,6 +657,10 @@ class AiAgentEngine {
         return result;
       } catch (err) {
         lastError = err;
+        if (err.name === 'AbortError' || options.signal?.aborted) {
+          throw new Error('Agent execution cancelled by user.');
+        }
+
         const errMsg = String(err.message || err);
         const isRateLimitOrQuota =
           errMsg.includes('429') ||
@@ -661,7 +686,7 @@ class AiAgentEngine {
   /**
    * Gemini API client (native v1beta)
    */
-  async callGeminiApi({ apiKey, model, messages, tools, temperature }) {
+  async callGeminiApi({ apiKey, model, messages, tools, temperature, signal }) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     // Format messages for Gemini
@@ -740,6 +765,7 @@ class AiAgentEngine {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal,
     });
 
     if (!res.ok) {
@@ -780,7 +806,7 @@ class AiAgentEngine {
   /**
    * OpenAI Compatible API (OpenAI, DeepSeek, Groq, OpenRouter, Ollama)
    */
-  async callOpenAiCompatibleApi({ apiKey, baseUrl, model, messages, tools }) {
+  async callOpenAiCompatibleApi({ apiKey, baseUrl, model, messages, tools, signal }) {
     const cleanBase = (baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
     const url = `${cleanBase}/chat/completions`;
 
@@ -802,6 +828,7 @@ class AiAgentEngine {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal,
     });
 
     if (!res.ok) {
@@ -823,7 +850,7 @@ class AiAgentEngine {
   /**
    * Anthropic Messages API
    */
-  async callAnthropicApi({ apiKey, model, messages, tools }) {
+  async callAnthropicApi({ apiKey, model, messages, tools, signal }) {
     const url = 'https://api.anthropic.com/v1/messages';
 
     let systemPrompt = '';
@@ -855,6 +882,7 @@ class AiAgentEngine {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(payload),
+      signal,
     });
 
     if (!res.ok) {
@@ -890,6 +918,9 @@ class AiAgentEngine {
     onStep, // callback({ type, data })
     onFileModified,
   }) {
+    this.currentAbortController = new AbortController();
+    const { signal } = this.currentAbortController;
+
     const mcpTools = await this.mcpManager.getAllTools();
     const toolsSchema = getAgentToolsSchema(mcpTools);
     const skillsPrompt = this.skillManager.formatSkillsForSystemPrompt();
@@ -928,120 +959,154 @@ INSTRUCTIONS:
     const maxSteps = options.maxSteps || 16;
     const executionTrace = [];
 
-    for (let step = 0; step < maxSteps; step++) {
-      if (onStep) {
-        onStep({
-          type: 'status',
-          data: { step: step + 1, message: step === 0 ? 'Analyzing workspace & request...' : 'Evaluating tool outputs...' },
-        });
-      }
-
-      const modelResponse = await this.callModelWithFailover({
-        provider,
-        model,
-        messages: conversation,
-        tools: toolsSchema,
-        options,
-      });
-
-      const { text, toolCalls } = modelResponse;
-
-      if (!toolCalls || toolCalls.length === 0) {
-        // Model reached final response
-        executionTrace.push({
-          step: step + 1,
-          type: 'final_response',
-          text,
-        });
-
-        if (onStep) {
-          onStep({ type: 'final_response', data: { text, executionTrace } });
+    try {
+      for (let step = 0; step < maxSteps; step++) {
+        if (signal.aborted) {
+          throw new Error('Agent execution cancelled by user.');
         }
 
+        if (onStep) {
+          onStep({
+            type: 'status',
+            data: { step: step + 1, message: step === 0 ? 'Analyzing workspace & request...' : 'Evaluating tool outputs...' },
+          });
+        }
+
+        const modelResponse = await this.callModelWithFailover({
+          provider,
+          model,
+          messages: conversation,
+          tools: toolsSchema,
+          options: { ...options, signal },
+        });
+
+        const { text, toolCalls } = modelResponse;
+
+        if (!toolCalls || toolCalls.length === 0) {
+          // Model reached final response
+          executionTrace.push({
+            step: step + 1,
+            type: 'final_response',
+            text,
+          });
+
+          if (onStep) {
+            onStep({ type: 'final_response', data: { text, executionTrace } });
+          }
+
+          return {
+            response: text,
+            executionTrace,
+            activeKeyStats: this.getKeyStats(),
+          };
+        }
+
+        // Model requested tool calls
+        executionTrace.push({
+          step: step + 1,
+          type: 'tool_calls',
+          toolCalls,
+          reasoning: text,
+        });
+
+        conversation.push({
+          role: 'assistant',
+          content: text || '',
+          tool_calls: toolCalls,
+          rawParts: modelResponse.rawParts,
+        });
+
+        // Execute each tool call
+        for (const tc of toolCalls) {
+          if (signal.aborted) {
+            throw new Error('Agent execution cancelled by user.');
+          }
+
+          const fnName = tc.function.name;
+          let fnArgs = {};
+          try {
+            fnArgs = typeof tc.function.arguments === 'string'
+              ? JSON.parse(tc.function.arguments)
+              : tc.function.arguments;
+          } catch {
+            fnArgs = {};
+          }
+
+          if (onStep) {
+            onStep({
+              type: 'tool_start',
+              data: { id: tc.id, name: fnName, args: fnArgs },
+            });
+          }
+
+          let output = '';
+          try {
+            output = await executeAgentTool(fnName, fnArgs, {
+              workspacePath,
+              mcpManager: this.mcpManager,
+              skillManager: this.skillManager,
+              onFileModified: onFileModified || options.onFileModified,
+            });
+          } catch (err) {
+            output = `Error executing tool ${fnName}: ${err.message}`;
+          }
+
+          tc.output = output;
+          tc.parsedArgs = fnArgs;
+
+          if (onStep) {
+            onStep({
+              type: 'tool_finish',
+              data: { id: tc.id, name: fnName, output },
+            });
+          }
+
+          conversation.push({
+            role: 'tool',
+            name: fnName,
+            content: String(output),
+          });
+        }
+      }
+
+      // If max steps reached without clean finish
+      const finalMsg = 'Reached maximum agent steps. Current progress and changes have been applied.';
+      return {
+        response: finalMsg,
+        executionTrace,
+        activeKeyStats: this.getKeyStats(),
+      };
+    } catch (err) {
+      if (err.name === 'AbortError' || signal.aborted || err.message?.includes('cancelled')) {
+        const cancelMsg = '⚠️ Agent execution stopped by user (Matikan paksa).';
+        executionTrace.push({
+          step: executionTrace.length + 1,
+          type: 'cancelled',
+          text: cancelMsg,
+        });
+        if (onStep) {
+          onStep({ type: 'status', data: { message: cancelMsg } });
+        }
         return {
-          response: text,
+          response: cancelMsg,
           executionTrace,
+          cancelled: true,
           activeKeyStats: this.getKeyStats(),
         };
       }
-
-      // Model requested tool calls
-      executionTrace.push({
-        step: step + 1,
-        type: 'tool_calls',
-        toolCalls,
-        reasoning: text,
-      });
-
-      conversation.push({
-        role: 'assistant',
-        content: text || '',
-        tool_calls: toolCalls,
-        rawParts: modelResponse.rawParts,
-      });
-
-      // Execute each tool call
-      for (const tc of toolCalls) {
-        const fnName = tc.function.name;
-        let fnArgs = {};
-        try {
-          fnArgs = typeof tc.function.arguments === 'string'
-            ? JSON.parse(tc.function.arguments)
-            : tc.function.arguments;
-        } catch {
-          fnArgs = {};
-        }
-
-        if (onStep) {
-          onStep({
-            type: 'tool_start',
-            data: { id: tc.id, name: fnName, args: fnArgs },
-          });
-        }
-
-        let output = '';
-        try {
-          output = await executeAgentTool(fnName, fnArgs, {
-            workspacePath,
-            mcpManager: this.mcpManager,
-            skillManager: this.skillManager,
-            onFileModified: onFileModified || options.onFileModified,
-          });
-        } catch (err) {
-          output = `Error executing tool ${fnName}: ${err.message}`;
-        }
-
-        tc.output = output;
-        tc.parsedArgs = fnArgs;
-
-        if (onStep) {
-          onStep({
-            type: 'tool_finish',
-            data: { id: tc.id, name: fnName, output },
-          });
-        }
-
-        conversation.push({
-          role: 'tool',
-          name: fnName,
-          content: String(output),
-        });
-      }
+      throw err;
+    } finally {
+      this.currentAbortController = null;
     }
-
-    // If max steps reached without clean finish
-    const finalMsg = 'Reached maximum agent steps. Current progress and changes have been applied.';
-    return {
-      response: finalMsg,
-      executionTrace,
-      activeKeyStats: this.getKeyStats(),
-    };
   }
 
   /**
    * Bulk API batch runner across multiple files or tasks
    */
   async runBulkBatch({ items = [], taskPrompt, provider = 'gemini', model = 'gemini-3.6-flash', concurrency = 2, onProgress }) {
+    this.currentAbortController = new AbortController();
+    const { signal } = this.currentAbortController;
+
     const results = [];
     let completed = 0;
 
@@ -1050,6 +1115,7 @@ INSTRUCTIONS:
 
     const worker = async () => {
       while (queue.length > 0) {
+        if (signal.aborted) break;
         const item = queue.shift();
         if (!item) break;
 
@@ -1061,6 +1127,7 @@ INSTRUCTIONS:
             model,
             messages: [{ role: 'user', content: userPrompt }],
             tools: null,
+            options: { signal },
           });
 
           results.push({
@@ -1069,6 +1136,7 @@ INSTRUCTIONS:
             output: res.text,
           });
         } catch (err) {
+          if (signal.aborted) break;
           results.push({
             item: item.name || item.path,
             success: false,
@@ -1083,13 +1151,17 @@ INSTRUCTIONS:
       }
     };
 
-    const workerCount = Math.min(concurrency, items.length || 1);
-    for (let i = 0; i < workerCount; i++) {
-      workers.push(worker());
-    }
+    try {
+      const workerCount = Math.min(concurrency, items.length || 1);
+      for (let i = 0; i < workerCount; i++) {
+        workers.push(worker());
+      }
 
-    await Promise.all(workers);
-    return results;
+      await Promise.all(workers);
+      return results;
+    } finally {
+      this.currentAbortController = null;
+    }
   }
 }
 

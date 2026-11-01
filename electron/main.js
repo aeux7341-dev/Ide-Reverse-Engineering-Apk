@@ -911,6 +911,19 @@ ipcMain.handle('ai-agent-run', async (event, params) => {
   return result;
 });
 
+ipcMain.handle('ai-agent-cancel', () => {
+  const engine = getAiAgentEngine();
+  return engine.abortCurrentRun();
+});
+
+ipcMain.handle('open-external', (_event, url) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    shell.openExternal(url);
+    return true;
+  }
+  return false;
+});
+
 ipcMain.handle('ai-bulk-batch', async (event, params) => {
   const engine = getAiAgentEngine();
   const sender = event.sender;
