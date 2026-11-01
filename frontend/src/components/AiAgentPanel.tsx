@@ -139,8 +139,18 @@ interface AiAgentPanelProps {
   activeFilePath: string | null;
   fileContents: string;
   workspacePath?: string | null;
-  apiKeys: string;
-  setApiKeys: (keys: string) => void;
+  provider?: 'gemini' | 'openai' | 'anthropic';
+  setProvider?: (p: 'gemini' | 'openai' | 'anthropic') => void;
+  apiKeys?: string;
+  setApiKeys?: (keys: string) => void;
+  geminiApiKey?: string;
+  setGeminiApiKey?: (keys: string) => void;
+  openaiApiKey?: string;
+  setOpenaiApiKey?: (keys: string) => void;
+  openaiBaseUrl?: string;
+  setOpenaiBaseUrl?: (url: string) => void;
+  anthropicApiKey?: string;
+  setAnthropicApiKey?: (keys: string) => void;
   onOpenSkillsModal: () => void;
   onOpenMcpModal: () => void;
   onClose?: () => void;
@@ -152,8 +162,18 @@ export default function AiAgentPanel({
   activeFilePath,
   fileContents,
   workspacePath,
-  apiKeys,
+  provider: externalProvider,
+  setProvider: setExternalProvider,
+  apiKeys = '',
   setApiKeys,
+  geminiApiKey = '',
+  setGeminiApiKey,
+  openaiApiKey = '',
+  setOpenaiApiKey,
+  openaiBaseUrl = 'https://api.openai.com/v1',
+  setOpenaiBaseUrl,
+  anthropicApiKey = '',
+  setAnthropicApiKey,
   onOpenSkillsModal,
   onOpenMcpModal,
   onClose,
@@ -166,11 +186,31 @@ export default function AiAgentPanel({
   const [activeStatusMsg, setActiveStatusMsg] = useState('');
 
   // Provider and model options
-  const [provider, setProvider] = useState<'gemini' | 'openai' | 'anthropic'>('gemini');
-  const [model, setModel] = useState('gemini-3.6-flash');
+  const [localProvider, setLocalProvider] = useState<'gemini' | 'openai' | 'anthropic'>('gemini');
+  const provider = externalProvider || localProvider;
+  const setProvider = setExternalProvider || setLocalProvider;
+
+  const [model, setModel] = useState(provider === 'gemini' ? 'gemini-3.6-flash' : provider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 'gpt-4o-mini');
 
   // Key stats
   const [keyStats, setKeyStats] = useState<{ totalKeys: number; activeKeyMasked: string } | null>(null);
+
+  const getEffectiveKeys = () => {
+    if (provider === 'openai') return openaiApiKey || apiKeys || '';
+    if (provider === 'anthropic') return anthropicApiKey || apiKeys || '';
+    return geminiApiKey || apiKeys || '';
+  };
+
+  const handleUpdateCurrentKeys = (keys: string) => {
+    if (provider === 'openai') {
+      setOpenaiApiKey?.(keys);
+    } else if (provider === 'anthropic') {
+      setAnthropicApiKey?.(keys);
+    } else {
+      setGeminiApiKey?.(keys);
+      setApiKeys?.(keys);
+    }
+  };
 
   // Skills count & MCP count
   const [activeSkills, setActiveSkills] = useState<SkillItem[]>([]);
@@ -212,8 +252,12 @@ export default function AiAgentPanel({
   };
 
   useEffect(() => {
+    const curKeys = getEffectiveKeys();
+    if (electronAPI?.aiSetKeys && curKeys.trim()) {
+      electronAPI.aiSetKeys(curKeys).then((st: any) => setKeyStats(st)).catch(() => {});
+    }
     refreshMetadata();
-  }, [apiKeys]);
+  }, [provider, geminiApiKey, openaiApiKey, anthropicApiKey, apiKeys]);
 
   // Listen to step events from main process
   useEffect(() => {
@@ -277,9 +321,10 @@ export default function AiAgentPanel({
     setActiveStatusMsg('Initializing Autonomous Agent...');
 
     try {
+      const effectiveKeys = getEffectiveKeys();
       if (electronAPI?.aiAgentRun) {
-        if (apiKeys.trim()) {
-          await electronAPI.aiSetKeys(apiKeys);
+        if (effectiveKeys.trim()) {
+          await electronAPI.aiSetKeys(effectiveKeys);
         }
 
         const res = await electronAPI.aiAgentRun({
@@ -289,7 +334,8 @@ export default function AiAgentPanel({
           fileContent: fileContents,
           provider,
           model,
-          apiKeys,
+          apiKeys: effectiveKeys,
+          baseUrl: provider === 'openai' ? (openaiBaseUrl || 'https://api.openai.com/v1') : undefined,
         });
 
         setChatHistory((prev) => [
@@ -366,9 +412,10 @@ export default function AiAgentPanel({
     setBulkProgress({ completed: 0, total: itemsToProcess.length });
 
     try {
+      const effectiveKeys = getEffectiveKeys();
       if (electronAPI?.aiBulkBatch) {
-        if (apiKeys.trim()) {
-          await electronAPI.aiSetKeys(apiKeys);
+        if (effectiveKeys.trim()) {
+          await electronAPI.aiSetKeys(effectiveKeys);
         }
 
         const res = await electronAPI.aiBulkBatch({
@@ -376,6 +423,8 @@ export default function AiAgentPanel({
           taskPrompt: bulkTask,
           provider,
           model,
+          apiKeys: effectiveKeys,
+          baseUrl: provider === 'openai' ? (openaiBaseUrl || 'https://api.openai.com/v1') : undefined,
           concurrency: 2,
         });
         setBulkResults(res);
@@ -477,16 +526,23 @@ export default function AiAgentPanel({
         {/* Key Pool status pill */}
         <button
           onClick={() => {
+            const curKeys = getEffectiveKeys();
+            const providerName =
+              provider === 'gemini'
+                ? 'Google Gemini'
+                : provider === 'openai'
+                ? 'OpenAI / DeepSeek'
+                : 'Anthropic Claude';
             const keys = prompt(
-              'Bulk API Key Pool (enter comma or newline separated API keys for auto-failover):',
-              apiKeys
+              `${providerName} API Key Pool (enter comma or newline separated keys):`,
+              curKeys
             );
             if (keys !== null) {
-              setApiKeys(keys);
+              handleUpdateCurrentKeys(keys);
             }
           }}
           className="flex items-center gap-1 px-2 py-0.5 bg-[#181818] rounded-[3px] text-[#696969] hover:text-[#FFFFFF] transition-colors shrink-0"
-          title="Click to manage API key pool"
+          title={`Click to manage ${provider} API key pool`}
         >
           <Key size={10} className="text-[#0078D4]" />
           <span className="font-mono text-[9px]">
@@ -494,6 +550,20 @@ export default function AiAgentPanel({
           </span>
         </button>
       </div>
+
+      {/* OpenAI / DeepSeek Base URL bar if openai is active */}
+      {provider === 'openai' && (
+        <div className="px-3 py-1 bg-[#181818] border-b border-[#2B2B2B] flex items-center gap-1.5 text-[10px]">
+          <span className="text-[#858585] font-mono shrink-0">Base URL:</span>
+          <input
+            type="text"
+            value={openaiBaseUrl || 'https://api.openai.com/v1'}
+            onChange={(e) => setOpenaiBaseUrl?.(e.target.value)}
+            placeholder="https://api.openai.com/v1 (or https://api.deepseek.com/v1)"
+            className="bg-[#1F1F1F] rounded px-1.5 py-0.5 text-[#FFFFFF] text-[10px] flex-1 min-w-0 outline-none font-mono"
+          />
+        </div>
+      )}
 
       {/* Skills & MCP Button Bar */}
       <div className="px-3 py-1.5 bg-[#181818] flex items-center justify-between gap-2 shrink-0">

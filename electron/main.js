@@ -892,7 +892,10 @@ ipcMain.handle('ai-agent-run', async (event, params) => {
     fileContent: params.fileContent,
     provider: params.provider || 'gemini',
     model: params.model || 'gemini-3.6-flash',
-    options: params.options || {},
+    options: {
+      ...(params.options || {}),
+      baseUrl: params.baseUrl || params.options?.baseUrl,
+    },
     onStep: (step) => {
       if (!sender.isDestroyed()) {
         sender.send('ai-agent-step', step);

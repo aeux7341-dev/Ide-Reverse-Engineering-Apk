@@ -705,11 +705,11 @@ class AiAgentEngine {
           },
         };
         const lastContent = contents[contents.length - 1];
-        if (lastContent && lastContent.role === 'function') {
+        if (lastContent && lastContent.role === 'user' && lastContent.parts && lastContent.parts[0]?.functionResponse) {
           lastContent.parts.push(fnPart);
         } else {
           contents.push({
-            role: 'function',
+            role: 'user',
             parts: [fnPart],
           });
         }

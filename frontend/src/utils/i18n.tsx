@@ -93,7 +93,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'AI API Key Pool (Bulk & Failover)',
     'settings.ai.desc': 'Enter one or multiple API keys separated by commas or lines for automatic rotation and quota failover.',
-    'settings.ai.placeholder': 'Enter Gemini API keys...',
+    'settings.ai.placeholder': 'Enter API keys (one per line or comma-separated)...',
 
     'settings.decompile.title': 'Decompiler Engine',
     'settings.decompile.apktoolDesc': 'Decompile to Smali bytecode, resources, and AndroidManifest.xml (Fast & editable).',
@@ -183,7 +183,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'Pool API Key AI (Bulk & Failover)',
     'settings.ai.desc': 'Masukkan satu atau beberapa API key dipisahkan koma atau baris baru untuk rotasi otomatis.',
-    'settings.ai.placeholder': 'Masukkan API key Gemini...',
+    'settings.ai.placeholder': 'Masukkan API key (satu per baris atau pisahkan koma)...',
 
     'settings.decompile.title': 'Mesin Dekompilasi',
     'settings.decompile.apktoolDesc': 'Dekompilasi ke bytecode Smali, sumber daya, dan AndroidManifest.xml.',
@@ -271,7 +271,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'AI API 密钥池（批量与故障转移）',
     'settings.ai.desc': '输入一个或多个以逗号或换行符分隔的 API 密钥以启用自动轮询。',
-    'settings.ai.placeholder': '输入 Gemini API 密钥...',
+    'settings.ai.placeholder': '输入 API 密钥（每行一个或用逗号分隔）...',
 
     'settings.decompile.title': '反编译引擎',
     'settings.decompile.apktoolDesc': '反编译为 Smali 字节码、资源和 AndroidManifest.xml。',
@@ -350,7 +350,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'AI API कुंजी पूल',
     'settings.ai.desc': 'स्वचालित रोटेशन के लिए एकाधिक कुंजियाँ दर्ज करें।',
-    'settings.ai.placeholder': 'Gemini API कुंजियाँ दर्ज करें...',
+    'settings.ai.placeholder': 'API कुंजियाँ दर्ज करें...',
 
     'settings.decompile.title': 'डिकम्पाइलर इंजन',
     'settings.decompile.apktoolDesc': 'Smali बाइटकोड और संसाधनों में डिकम्पाइल करें।',
@@ -429,7 +429,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'Grupo de Claves API de IA',
     'settings.ai.desc': 'Ingrese múltiples claves para rotación automática y conmutación por error.',
-    'settings.ai.placeholder': 'Ingrese claves API de Gemini...',
+    'settings.ai.placeholder': 'Ingrese claves API (una por línea o separadas por comas)...',
 
     'settings.decompile.title': 'Motor de Descompilación',
     'settings.decompile.apktoolDesc': 'Descompilar a bytecode Smali y recursos.',
@@ -508,7 +508,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'مجموعة مفاتيح الذكاء الاصطناعي',
     'settings.ai.desc': 'أدخل عدة مفاتيح للتدوير التلقائي وتجنب حدود الحصص.',
-    'settings.ai.placeholder': 'أدخل مفاتيح Gemini API...',
+    'settings.ai.placeholder': 'أدخل مفاتيح API (مفتاح لكل سطر أو مفصولة بفواصل)...',
 
     'settings.decompile.title': 'محرك التفكيك',
     'settings.decompile.apktoolDesc': 'تفكيك إلى كود Smali والموارد ومصفوفة التطبيق.',
@@ -587,7 +587,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'Groupe de clés API IA',
     'settings.ai.desc': 'Entrez plusieurs clés API pour une rotation automatique.',
-    'settings.ai.placeholder': 'Entrez les clés API Gemini...',
+    'settings.ai.placeholder': 'Entrez les clés API (une par ligne ou séparées par des virgules)...',
 
     'settings.decompile.title': 'Moteur de décompilation',
     'settings.decompile.apktoolDesc': 'Décompiler en bytecode Smali et ressources.',
@@ -666,7 +666,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'AI API কী পুল',
     'settings.ai.desc': 'স্বয়ংক্রিয় আবর্তনের জন্য একাধিক কী প্রবেশ করান।',
-    'settings.ai.placeholder': 'Gemini API কী লিখুন...',
+    'settings.ai.placeholder': 'API কী লিখুন (প্রতি লাইনে একটি বা কমা দ্বারা পৃথক)...',
 
     'settings.decompile.title': 'ডিকম্পাইলার ইঞ্জিন',
     'settings.decompile.apktoolDesc': 'Smali বাইটকোড এবং রিসোর্সে রূপান্তর করুন।',
@@ -745,7 +745,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'Pool de Chaves API de IA',
     'settings.ai.desc': 'Insira várias chaves para rotação automática e failover.',
-    'settings.ai.placeholder': 'Insira chaves API Gemini...',
+    'settings.ai.placeholder': 'Insira chaves API (uma por linha ou separadas por vírgulas)...',
 
     'settings.decompile.title': 'Motor de Descompilação',
     'settings.decompile.apktoolDesc': 'Descompilar para bytecode Smali e recursos.',
@@ -824,7 +824,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'Пул API ключей ИИ',
     'settings.ai.desc': 'Введите несколько ключей для автоматической ротации.',
-    'settings.ai.placeholder': 'Введите API ключи Gemini...',
+    'settings.ai.placeholder': 'Введите API ключи (по одному на строку или через запятую)...',
 
     'settings.decompile.title': 'Движок декомпиляции',
     'settings.decompile.apktoolDesc': 'Декомпиляция в байткод Smali и ресурсы.',
@@ -903,7 +903,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     'settings.ai.title': 'AI APIキープール',
     'settings.ai.desc': '自動ローテーション用に複数のAPIキーを入力します。',
-    'settings.ai.placeholder': 'Gemini APIキーを入力...',
+    'settings.ai.placeholder': 'APIキーを入力（1行に1つ、またはカンマ区切り）...',
 
     'settings.decompile.title': '逆コンパイラエンジン',
     'settings.decompile.apktoolDesc': 'Smaliバイトコードおよびリソースに逆コンパイルします。',

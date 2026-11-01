@@ -20,6 +20,14 @@ interface SettingsModalProps {
   onClose: () => void;
   geminiApiKey: string;
   onGeminiApiKeyChange: (keys: string) => void;
+  openaiApiKey?: string;
+  onOpenaiApiKeyChange?: (keys: string) => void;
+  openaiBaseUrl?: string;
+  onOpenaiBaseUrlChange?: (url: string) => void;
+  anthropicApiKey?: string;
+  onAnthropicApiKeyChange?: (keys: string) => void;
+  activeAiProvider?: 'gemini' | 'openai' | 'anthropic';
+  onSelectAiProvider?: (p: 'gemini' | 'openai' | 'anthropic') => void;
   decompilerType: 'apktool' | 'jadx' | 'smali';
   onSelectDecompiler: (type: 'apktool' | 'jadx') => void;
   compilerBackend: 'aapt2' | 'aapt';
@@ -46,6 +54,14 @@ export default function SettingsModal({
   onClose,
   geminiApiKey,
   onGeminiApiKeyChange,
+  openaiApiKey = '',
+  onOpenaiApiKeyChange,
+  openaiBaseUrl = 'https://api.openai.com/v1',
+  onOpenaiBaseUrlChange,
+  anthropicApiKey = '',
+  onAnthropicApiKeyChange,
+  activeAiProvider = 'gemini',
+  onSelectAiProvider,
   decompilerType,
   onSelectDecompiler,
   compilerBackend,
@@ -57,9 +73,18 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const { lang, setLang, t } = useI18n();
   const [activeTab, setActiveTab] = useState<SettingsTab>('language');
+  const [selectedAiProvider, setSelectedAiProvider] = useState<'gemini' | 'openai' | 'anthropic'>(
+    activeAiProvider || 'gemini'
+  );
   const [isMaximized, setIsMaximized] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateCheckStatus, setUpdateCheckStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeAiProvider) {
+      setSelectedAiProvider(activeAiProvider);
+    }
+  }, [activeAiProvider]);
 
   const handleCheckUpdate = async () => {
     const electronAPI = (window as any).electronAPI;
@@ -137,12 +162,17 @@ export default function SettingsModal({
     { id: 'about', label: t('settings.tab.about', 'About & System'), icon: Info },
   ];
 
-  const parsedKeyCount = geminiApiKey
-    ? geminiApiKey
-        .split(/[\n,]/)
-        .map((k) => k.trim())
-        .filter(Boolean).length
-    : 0;
+  const countKeys = (k?: string) =>
+    k
+      ? k
+          .split(/[\n,]/)
+          .map((s) => s.trim())
+          .filter(Boolean).length
+      : 0;
+
+  const geminiCount = countKeys(geminiApiKey);
+  const openaiCount = countKeys(openaiApiKey);
+  const anthropicCount = countKeys(anthropicApiKey);
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none select-none">
@@ -298,32 +328,143 @@ export default function SettingsModal({
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-2 bg-[#181818] p-4 rounded-[6px] border border-[#2B2B2B]">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#CCCCCC]">Gemini API Keys</span>
-                    <span className="text-[10px] bg-[#252526] px-2 py-0.5 rounded text-[#0078D4] font-mono font-medium">
-                      {parsedKeyCount} {parsedKeyCount === 1 ? 'Key Configured' : 'Keys in Pool'}
-                    </span>
-                  </div>
+                {/* Provider Tabs */}
+                <div className="flex items-center gap-1.5 p-1 bg-[#181818] border border-[#2B2B2B] rounded-[6px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAiProvider('gemini');
+                      onSelectAiProvider?.('gemini');
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-[4px] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                      selectedAiProvider === 'gemini'
+                        ? 'bg-[#0078D4] text-white shadow-sm'
+                        : 'text-[#858585] hover:text-[#FFFFFF]'
+                    }`}
+                  >
+                    <span>Google Gemini</span>
+                    <span className="text-[10px] opacity-80 font-mono">({geminiCount})</span>
+                  </button>
 
-                  <textarea
-                    rows={6}
-                    value={geminiApiKey}
-                    onChange={(e) => onGeminiApiKeyChange(e.target.value)}
-                    placeholder={t(
-                      'settings.ai.placeholder',
-                      'Enter one or multiple API keys (separated by commas or newlines)...'
-                    )}
-                    className="w-full bg-[#1F1F1F] border border-[#2B2B2B] rounded-[4px] p-2.5 text-xs text-[#FFFFFF] placeholder-[#696969] focus:outline-none focus:border-[#0078D4] font-mono leading-relaxed"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAiProvider('openai');
+                      onSelectAiProvider?.('openai');
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-[4px] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                      selectedAiProvider === 'openai'
+                        ? 'bg-[#0078D4] text-white shadow-sm'
+                        : 'text-[#858585] hover:text-[#FFFFFF]'
+                    }`}
+                  >
+                    <span>OpenAI / DeepSeek</span>
+                    <span className="text-[10px] opacity-80 font-mono">({openaiCount})</span>
+                  </button>
 
-                  <div className="flex items-center gap-2 text-[11px] text-[#858585] mt-1">
-                    <RotateCw size={12} className="text-[#0078D4] shrink-0" />
-                    <span>
-                      Keys rotate round-robin across chat, smali explanations, and autonomous agent tasks.
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAiProvider('anthropic');
+                      onSelectAiProvider?.('anthropic');
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-[4px] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                      selectedAiProvider === 'anthropic'
+                        ? 'bg-[#0078D4] text-white shadow-sm'
+                        : 'text-[#858585] hover:text-[#FFFFFF]'
+                    }`}
+                  >
+                    <span>Claude</span>
+                    <span className="text-[10px] opacity-80 font-mono">({anthropicCount})</span>
+                  </button>
                 </div>
+
+                {/* Provider-specific Key Pool Configuration */}
+                {selectedAiProvider === 'gemini' && (
+                  <div className="flex flex-col gap-2.5 bg-[#181818] p-4 rounded-[6px] border border-[#2B2B2B]">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-[#CCCCCC]">Google Gemini API Keys (aistudio.google.com)</span>
+                      <span className="text-[10px] bg-[#252526] px-2 py-0.5 rounded text-[#0078D4] font-mono font-medium">
+                        {geminiCount} {geminiCount === 1 ? 'Key Configured' : 'Keys in Pool'}
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={6}
+                      value={geminiApiKey}
+                      onChange={(e) => onGeminiApiKeyChange(e.target.value)}
+                      placeholder="Paste Gemini API keys (one per line or comma-separated)..."
+                      className="w-full bg-[#1F1F1F] border border-[#2B2B2B] rounded-[4px] p-2.5 text-xs text-[#FFFFFF] placeholder-[#696969] focus:outline-none focus:border-[#0078D4] font-mono leading-relaxed"
+                    />
+
+                    <div className="flex items-center gap-2 text-[11px] text-[#858585]">
+                      <RotateCw size={12} className="text-[#0078D4] shrink-0" />
+                      <span>Keys rotate round-robin across chat, Smali explain, and autonomous agent tasks.</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAiProvider === 'openai' && (
+                  <div className="flex flex-col gap-3 bg-[#181818] p-4 rounded-[6px] border border-[#2B2B2B]">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-[#CCCCCC]">API Base URL</span>
+                      <input
+                        type="text"
+                        value={openaiBaseUrl}
+                        onChange={(e) => onOpenaiBaseUrlChange?.(e.target.value)}
+                        placeholder="https://api.openai.com/v1 (or https://api.deepseek.com/v1, http://localhost:11434/v1)"
+                        className="w-full bg-[#1F1F1F] border border-[#2B2B2B] rounded-[4px] px-2.5 py-1.5 text-xs text-[#FFFFFF] placeholder-[#696969] focus:outline-none focus:border-[#0078D4] font-mono"
+                      />
+                      <span className="text-[10px] text-[#696969]">
+                        Compatible with OpenAI, DeepSeek, Groq, OpenRouter, and local Ollama endpoints.
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <span className="font-medium text-[#CCCCCC]">API Keys Pool</span>
+                      <span className="text-[10px] bg-[#252526] px-2 py-0.5 rounded text-[#0078D4] font-mono font-medium">
+                        {openaiCount} {openaiCount === 1 ? 'Key Configured' : 'Keys in Pool'}
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={5}
+                      value={openaiApiKey}
+                      onChange={(e) => onOpenaiApiKeyChange?.(e.target.value)}
+                      placeholder="Paste OpenAI/DeepSeek keys (e.g. sk-..., one per line or comma-separated)..."
+                      className="w-full bg-[#1F1F1F] border border-[#2B2B2B] rounded-[4px] p-2.5 text-xs text-[#FFFFFF] placeholder-[#696969] focus:outline-none focus:border-[#0078D4] font-mono leading-relaxed"
+                    />
+
+                    <div className="flex items-center gap-2 text-[11px] text-[#858585]">
+                      <RotateCw size={12} className="text-[#0078D4] shrink-0" />
+                      <span>Automatic failover on 429 quota exhaustion across your pool keys.</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAiProvider === 'anthropic' && (
+                  <div className="flex flex-col gap-2.5 bg-[#181818] p-4 rounded-[6px] border border-[#2B2B2B]">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-[#CCCCCC]">Anthropic Claude API Keys (console.anthropic.com)</span>
+                      <span className="text-[10px] bg-[#252526] px-2 py-0.5 rounded text-[#0078D4] font-mono font-medium">
+                        {anthropicCount} {anthropicCount === 1 ? 'Key Configured' : 'Keys in Pool'}
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={6}
+                      value={anthropicApiKey}
+                      onChange={(e) => onAnthropicApiKeyChange?.(e.target.value)}
+                      placeholder="Paste Anthropic keys (e.g. sk-ant-..., one per line or comma-separated)..."
+                      className="w-full bg-[#1F1F1F] border border-[#2B2B2B] rounded-[4px] p-2.5 text-xs text-[#FFFFFF] placeholder-[#696969] focus:outline-none focus:border-[#0078D4] font-mono leading-relaxed"
+                    />
+
+                    <div className="flex items-center gap-2 text-[11px] text-[#858585]">
+                      <RotateCw size={12} className="text-[#0078D4] shrink-0" />
+                      <span>Round-robin multi-key dispatch for Claude 3.5 Sonnet agent tasks.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

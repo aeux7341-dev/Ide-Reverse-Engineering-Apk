@@ -255,6 +255,10 @@ export default function App() {
   // AI Agent & Chat
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('apkrtool_gemini_key') || '');
+  const [openaiApiKey, setOpenaiApiKey] = useState(() => localStorage.getItem('apkrtool_openai_key') || '');
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState(() => localStorage.getItem('apkrtool_openai_base_url') || 'https://api.openai.com/v1');
+  const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem('apkrtool_anthropic_key') || '');
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'anthropic'>(() => (localStorage.getItem('apkrtool_ai_provider') as any) || 'gemini');
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
   const [isMcpModalOpen, setIsMcpModalOpen] = useState(false);
@@ -309,6 +313,32 @@ export default function App() {
   const handleSetGeminiApiKey = (key: string) => {
     setGeminiApiKey(key);
     localStorage.setItem('apkrtool_gemini_key', key);
+  };
+
+  const handleSetOpenaiApiKey = (key: string) => {
+    setOpenaiApiKey(key);
+    localStorage.setItem('apkrtool_openai_key', key);
+  };
+
+  const handleSetOpenaiBaseUrl = (url: string) => {
+    setOpenaiBaseUrl(url);
+    localStorage.setItem('apkrtool_openai_base_url', url);
+  };
+
+  const handleSetAnthropicApiKey = (key: string) => {
+    setAnthropicApiKey(key);
+    localStorage.setItem('apkrtool_anthropic_key', key);
+  };
+
+  const handleSetAiProvider = (p: 'gemini' | 'openai' | 'anthropic') => {
+    setAiProvider(p);
+    localStorage.setItem('apkrtool_ai_provider', p);
+  };
+
+  const getActiveApiKey = () => {
+    if (aiProvider === 'openai') return openaiApiKey;
+    if (aiProvider === 'anthropic') return anthropicApiKey;
+    return geminiApiKey;
   };
 
   // Fullscreen & Window styling synchronizer
@@ -1368,18 +1398,20 @@ export default function App() {
     const electronAPI = (window as any).electronAPI;
 
     try {
+      const activeKeys = getActiveApiKey();
       if (electronAPI?.aiAgentRun) {
-        if (geminiApiKey.trim()) {
-          await electronAPI.aiSetKeys(geminiApiKey);
+        if (activeKeys.trim()) {
+          await electronAPI.aiSetKeys(activeKeys);
         }
         const res = await electronAPI.aiAgentRun({
           prompt: msg,
           workspacePath: realWorkspacePath,
           activeFile: active?.path ?? null,
           fileContent: active ? fileContents : null,
-          provider: 'gemini',
-          model: 'gemini-3.6-flash',
-          apiKeys: geminiApiKey,
+          provider: aiProvider,
+          model: aiProvider === 'gemini' ? 'gemini-3.6-flash' : aiProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 'gpt-4o-mini',
+          apiKeys: activeKeys,
+          baseUrl: aiProvider === 'openai' ? (openaiBaseUrl || 'https://api.openai.com/v1') : undefined,
         });
 
         setChatHistory((prev) => [
@@ -1825,8 +1857,16 @@ export default function App() {
             activeFilePath={activeTabPath}
             fileContents={fileContents}
             workspacePath={realWorkspacePath}
-            apiKeys={geminiApiKey}
-            setApiKeys={handleSetGeminiApiKey}
+            provider={aiProvider}
+            setProvider={handleSetAiProvider}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={handleSetGeminiApiKey}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={handleSetOpenaiApiKey}
+            openaiBaseUrl={openaiBaseUrl}
+            setOpenaiBaseUrl={handleSetOpenaiBaseUrl}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={handleSetAnthropicApiKey}
             onOpenSkillsModal={() => setIsSkillsModalOpen(true)}
             onOpenMcpModal={() => setIsMcpModalOpen(true)}
             onClose={() => setIsAiPanelOpen(false)}
@@ -2036,7 +2076,15 @@ export default function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         geminiApiKey={geminiApiKey}
-        onGeminiApiKeyChange={setGeminiApiKey}
+        onGeminiApiKeyChange={handleSetGeminiApiKey}
+        openaiApiKey={openaiApiKey}
+        onOpenaiApiKeyChange={handleSetOpenaiApiKey}
+        openaiBaseUrl={openaiBaseUrl}
+        onOpenaiBaseUrlChange={handleSetOpenaiBaseUrl}
+        anthropicApiKey={anthropicApiKey}
+        onAnthropicApiKeyChange={handleSetAnthropicApiKey}
+        activeAiProvider={aiProvider}
+        onSelectAiProvider={handleSetAiProvider}
         decompilerType={decompilerType}
         onSelectDecompiler={setDecompilerType}
         compilerBackend={compilerBackend}
